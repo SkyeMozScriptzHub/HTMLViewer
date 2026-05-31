@@ -1,3 +1,4 @@
+cat > /mnt/user-data/outputs/index.html << 'ENDOFFILE_MARKER'
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,10 +8,376 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>HTML Tester Pro</title>
-<link rel="stylesheet" href="style.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+/* ===== RESET & BASE ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-base:#0a0c10;
+  --bg-surface:#0f1117;
+  --bg-elevated:#161922;
+  --bg-hover:#1e2330;
+  --bg-active:#232a3b;
+  --border:#1f2535;
+  --border-light:#2c3450;
+  --accent:#4f8eff;
+  --accent-dim:#2a4f9e;
+  --accent-glow:rgba(79,142,255,0.12);
+  --green:#3ecf70;
+  --red:#ff4f4f;
+  --yellow:#ffcc44;
+  --purple:#9d7aff;
+  --orange:#ff7c44;
+  --text-primary:#dde3f0;
+  --text-secondary:#7a85a0;
+  --text-muted:#40495f;
+  --font-ui:'Inter',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+  --topbar-h:46px;
+  --sidebar-w:240px;
+  --mobile-nav-h:58px;
+  --console-h:190px;
+  --radius:5px;
+  --radius-lg:9px;
+  --shadow:0 4px 24px rgba(0,0,0,0.5);
+  --shadow-lg:0 8px 48px rgba(0,0,0,0.7);
+  --transition:0.13s ease;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg-base);color:var(--text-primary);font-family:var(--font-ui);font-size:14px;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased}
+button{cursor:pointer;font-family:var(--font-ui)}
+input,select,textarea{font-family:var(--font-ui)}
+
+/* ===== LOADING ===== */
+#loading-screen{position:fixed;inset:0;background:var(--bg-base);display:flex;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s ease,transform .5s ease}
+#loading-screen.fade-out{opacity:0;pointer-events:none;transform:scale(.98)}
+.loader-content{display:flex;flex-direction:column;align-items:center;gap:22px}
+.loader-logo{font-family:var(--font-mono);font-size:2rem;font-weight:700;color:var(--accent);text-shadow:0 0 30px var(--accent);letter-spacing:3px}
+.loader-logo .logo-bracket{opacity:.5}
+.loader-bar-wrap{width:220px;height:2px;background:var(--bg-elevated);border-radius:99px;overflow:hidden}
+.loader-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--purple));border-radius:99px;animation:loaderAnim 1.6s ease forwards;box-shadow:0 0 12px var(--accent)}
+@keyframes loaderAnim{0%{width:0%}60%{width:75%}100%{width:100%}}
+.loader-label{font-size:11px;color:var(--text-muted);letter-spacing:1.5px;font-family:var(--font-mono)}
+
+/* ===== TOPBAR ===== */
+#topbar{position:fixed;top:0;left:0;right:0;height:var(--topbar-h);background:var(--bg-surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 8px;z-index:100}
+.topbar-left{display:flex;align-items:center;gap:8px;min-width:160px}
+.topbar-right{display:flex;align-items:center;gap:3px;margin-left:auto;flex-shrink:0}
+.topbar-center{display:flex;align-items:center;flex:1;overflow:hidden;gap:1px;position:relative}
+.app-logo{font-family:var(--font-mono);font-weight:700;font-size:14px;color:var(--accent);white-space:nowrap;letter-spacing:1px}
+.app-logo .logo-bracket{opacity:.55}
+.app-title{font-size:12px;font-weight:600;color:var(--text-muted);white-space:nowrap}
+
+/* ===== BUTTONS ===== */
+.icon-btn{width:30px;height:30px;border:none;background:transparent;color:var(--text-secondary);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;transition:all var(--transition);flex-shrink:0}
+.icon-btn svg{width:15px;height:15px}
+.icon-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
+.icon-btn:active{background:var(--bg-active);transform:scale(.95)}
+.icon-btn-sm{width:24px;height:24px;border:none;background:transparent;color:var(--text-secondary);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;transition:all var(--transition);flex-shrink:0}
+.icon-btn-sm svg{width:13px;height:13px}
+.icon-btn-sm:hover{background:var(--bg-hover);color:var(--text-primary)}
+.action-btn{display:flex;align-items:center;gap:6px;padding:5px 13px;border:none;border-radius:var(--radius);font-size:12px;font-weight:600;transition:all var(--transition);background:var(--accent);color:#fff}
+.action-btn:hover{filter:brightness(1.12);transform:translateY(-1px)}
+.action-btn:active{transform:translateY(0) scale(.97)}
+.action-btn.secondary{background:var(--bg-elevated);color:var(--text-primary);border:1px solid var(--border-light)}
+.action-btn.secondary:hover{background:var(--bg-hover)}
+.action-btn.danger{background:#7a1a1a;color:#ff8888;border:1px solid #5a1010}
+.action-btn.danger:hover{background:#a02020}
+.action-btn svg{width:13px;height:13px}
+.run-btn{background:linear-gradient(135deg,#1d6aff,#0048cc);box-shadow:0 2px 14px rgba(79,142,255,.28)}
+.run-btn:hover{box-shadow:0 4px 22px rgba(79,142,255,.45)}
+
+/* ===== TABS ===== */
+#tab-bar-wrap{display:flex;align-items:center;flex:1;overflow:hidden;position:relative}
+#tab-bar{display:flex;align-items:flex-end;overflow-x:auto;overflow-y:hidden;gap:1px;height:100%;scrollbar-width:none;flex:1}
+#tab-bar::-webkit-scrollbar{display:none}
+.file-tab{display:flex;align-items:center;gap:5px;padding:0 10px;height:30px;border-radius:var(--radius) var(--radius) 0 0;font-size:11px;font-family:var(--font-mono);color:var(--text-muted);background:transparent;border:none;cursor:pointer;white-space:nowrap;transition:all var(--transition);flex-shrink:0;max-width:150px;border-bottom:2px solid transparent;position:relative;user-select:none}
+.file-tab:hover{background:var(--bg-elevated);color:var(--text-secondary)}
+.file-tab.active{color:var(--text-primary);background:var(--bg-elevated);border-bottom-color:var(--accent)}
+.file-tab.pinned::before{content:'📌';font-size:8px;margin-right:2px}
+.file-tab.modified .tab-name::after{content:'●';color:var(--accent);margin-left:3px;font-size:8px;vertical-align:middle}
+.tab-close{width:14px;height:14px;border:none;background:transparent;color:var(--text-muted);display:flex;align-items:center;justify-content:center;border-radius:3px;font-size:11px;flex-shrink:0;opacity:0;transition:all var(--transition)}
+.file-tab:hover .tab-close,.file-tab.active .tab-close{opacity:1}
+.tab-close:hover{background:rgba(255,80,80,.2);color:var(--red)}
+.tab-name{overflow:hidden;text-overflow:ellipsis;max-width:100px}
+.tab-icon{width:13px;height:13px;flex-shrink:0}
+#tab-scroll-left,#tab-scroll-right{width:22px;height:30px;border:none;background:var(--bg-surface);color:var(--text-muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;font-size:14px;border-radius:0}
+#tab-scroll-left:hover,#tab-scroll-right:hover{color:var(--text-primary);background:var(--bg-hover)}
+
+/* ===== WORKSPACE ===== */
+#workspace{position:fixed;top:var(--topbar-h);left:0;right:0;bottom:0;display:flex;overflow:hidden}
+
+/* ===== SIDEBAR ===== */
+#sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--bg-surface);border-right:1px solid var(--border);display:flex;flex-direction:column;transition:transform .2s ease;overflow:hidden;z-index:20;flex-shrink:0}
+#sidebar.collapsed{transform:translateX(calc(-1 * var(--sidebar-w)));position:absolute;height:100%}
+.sidebar-header{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-bottom:1px solid var(--border);min-height:34px}
+.sidebar-title{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text-muted)}
+.sidebar-actions{display:flex;gap:1px}
+.sidebar-search-wrap{padding:6px 8px;border-bottom:1px solid var(--border)}
+.sidebar-search{width:100%;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:11px;padding:4px 8px;outline:none;font-family:var(--font-ui)}
+.sidebar-search:focus{border-color:var(--accent)}
+.sidebar-search::placeholder{color:var(--text-muted)}
+
+/* DROP ZONE */
+#drop-zone{margin:8px;border-radius:var(--radius-lg);border:2px dashed var(--border);padding:14px 8px;text-align:center;transition:all .2s ease;cursor:pointer}
+#drop-zone:hover,#drop-zone.drag-over{border-color:var(--accent);background:var(--accent-glow)}
+#drop-zone.drag-over{transform:scale(1.01)}
+.drop-icon svg{width:26px;height:26px;color:var(--text-muted)}
+#drop-zone p{font-size:11px;color:var(--text-secondary);line-height:1.5;margin-top:6px}
+#drop-zone p span{color:var(--text-muted)}
+.drop-btn{margin-top:8px;padding:4px 10px;background:var(--bg-elevated);border:1px solid var(--border-light);border-radius:var(--radius);color:var(--text-primary);font-size:11px;transition:all var(--transition)}
+.drop-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* FILE TREE */
+#file-tree{flex:1;overflow-y:auto;overflow-x:hidden;padding:4px 0;contain:strict;will-change:transform}
+#file-tree::-webkit-scrollbar{width:3px}
+#file-tree::-webkit-scrollbar-track{background:transparent}
+#file-tree::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+.tree-item{display:flex;align-items:center;gap:5px;padding:3px 8px;cursor:pointer;user-select:none;font-size:12px;color:var(--text-secondary);border-radius:4px;margin:0 4px;transition:background var(--transition);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:26px;position:relative}
+.tree-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.tree-item.active{background:var(--bg-active);color:var(--text-primary)}
+.tree-item.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--accent);border-radius:0 2px 2px 0}
+.tree-item.folder{font-weight:500;color:var(--text-primary)}
+.tree-item.drag-over-folder{outline:1px solid var(--accent);background:var(--accent-glow)}
+.tree-folder-arrow{flex-shrink:0;transition:transform .15s ease;opacity:.4;display:flex;align-items:center}
+.tree-folder-arrow.open{transform:rotate(90deg)}
+.tree-item svg{width:13px;height:13px;flex-shrink:0}
+.tree-label{overflow:hidden;text-overflow:ellipsis;flex:1}
+.tree-fav{color:var(--yellow);font-size:9px;flex-shrink:0;opacity:0}
+.tree-item:hover .tree-fav{opacity:1}
+.tree-item.favorited .tree-fav{opacity:1}
+.tree-children{overflow:hidden;transition:max-height .15s ease}
+.tree-children.collapsed{max-height:0!important}
+.icon-html{color:#e8703a}.icon-css{color:#42a5f5}.icon-js{color:#ffd464}.icon-json{color:#7bc67e}.icon-img{color:#ab7df8}.icon-font{color:#ff8a65}.icon-txt{color:var(--text-secondary)}.icon-folder{color:#64b5f6}
+.sidebar-footer{border-top:1px solid var(--border);padding:7px 10px;font-size:11px}
+.project-name-wrap{display:flex;align-items:center;gap:5px;color:var(--text-secondary);overflow:hidden}
+.project-name-wrap span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icon-sm{width:11px;height:11px;flex-shrink:0}
+.sidebar-stats{color:var(--text-muted);margin-top:2px;font-size:10px;display:flex;gap:8px}
+
+/* ===== EDITOR AREA ===== */
+#editor-area{flex:1;display:flex;overflow:hidden;min-width:0}
+.panel{display:flex;flex-direction:column;overflow:hidden;contain:layout}
+#editor-panel{flex:1;min-width:0}
+#preview-panel{flex:1;min-width:0;border-left:1px solid var(--border)}
+.panel-header{display:flex;align-items:center;gap:5px;padding:0 8px;height:34px;background:var(--bg-surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.panel-label{font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text-muted);flex-shrink:0}
+.panel-actions{display:flex;gap:1px;margin-left:auto;flex-shrink:0}
+
+/* EDIT TOOLBAR */
+.edit-toolbar{display:flex;align-items:center;gap:1px;flex:1;overflow:hidden}
+.tb-btn{display:flex;align-items:center;gap:4px;padding:3px 7px;background:transparent;border:none;color:var(--text-muted);font-size:11px;border-radius:var(--radius);transition:all var(--transition);white-space:nowrap;flex-shrink:0}
+.tb-btn svg{width:12px;height:12px;flex-shrink:0}
+.tb-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
+.tb-btn:active{background:var(--bg-active);transform:scale(.95)}
+.tb-sep{width:1px;height:14px;background:var(--border);margin:0 3px;flex-shrink:0}
+
+/* MONACO */
+#monaco-container{flex:1;overflow:hidden;position:relative;min-height:0;contain:strict}
+#mobile-textarea{display:none;flex:1;width:100%;height:100%;background:#0d0f14;color:#c9d1e0;border:none;outline:none;padding:12px;font-family:var(--font-mono);font-size:16px;line-height:1.6;resize:none;tab-size:4;overflow:auto;-webkit-overflow-scrolling:touch}
+
+/* EMPTY STATE */
+#editor-empty-state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg-base)}
+#editor-empty-state .empty-icon svg{width:56px;height:56px;color:var(--text-muted)}
+#editor-empty-state h3{color:var(--text-secondary);font-size:15px;font-weight:600}
+#editor-empty-state p{color:var(--text-muted);font-size:12px}
+.empty-actions{display:flex;gap:8px}
+
+/* STATUS BAR */
+#status-bar{display:flex;align-items:center;gap:0;height:22px;background:var(--bg-surface);border-top:1px solid var(--border);font-size:10px;color:var(--text-muted);font-family:var(--font-mono);flex-shrink:0;overflow:hidden;white-space:nowrap;padding:0 8px}
+.status-item{padding:0 8px;height:100%;display:flex;align-items:center;cursor:default;transition:background var(--transition)}
+.status-item:hover{background:var(--bg-hover)}
+.status-sep{color:var(--border-light);padding:0 2px}
+#status-lang{color:var(--accent);font-weight:600}
+#status-modified{color:var(--yellow);margin-left:auto}
+
+/* RESIZER */
+.resizer{width:4px;background:var(--border);cursor:col-resize;flex-shrink:0;transition:background .2s;position:relative;z-index:10}
+.resizer:hover,.resizer.dragging{background:var(--accent)}
+
+/* PREVIEW VIEWPORT */
+#preview-viewport{flex:1;overflow:hidden;background:#333;display:flex;align-items:center;justify-content:center;position:relative}
+#device-frame{background:#fff;overflow:hidden;transition:all .3s ease;position:relative;box-shadow:0 0 0 1px var(--border),var(--shadow-lg)}
+#device-frame.device-desktop{width:100%;height:100%;box-shadow:none}
+#device-frame.device-laptop{width:90%;height:85%;border-radius:6px 6px 0 0}
+#device-frame.device-tablet{width:768px;height:90%;max-height:95%;border-radius:12px}
+#device-frame.device-phone{width:375px;height:95%;max-height:95%;border-radius:20px}
+#device-frame.device-phone-land{width:95%;height:375px;border-radius:20px}
+#preview-iframe{width:100%;height:100%;border:none;display:block}
+#preview-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:var(--bg-base);pointer-events:none}
+#preview-empty .empty-icon svg{width:52px;height:52px;color:var(--text-muted)}
+#preview-empty h3{color:var(--text-secondary);font-size:15px}
+#preview-empty p{color:var(--text-muted);font-size:12px}
+#preview-empty.hidden{display:none}
+
+/* DEVICE SWITCHER */
+.device-switcher{display:flex;gap:2px;margin-left:6px}
+.device-btn{width:24px;height:24px;border:none;border-radius:var(--radius);background:transparent;color:var(--text-muted);display:flex;align-items:center;justify-content:center;transition:all var(--transition)}
+.device-btn svg{width:12px;height:12px}
+.device-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
+.device-btn.active{background:var(--accent-glow);color:var(--accent)}
+
+/* CONSOLE */
+#console-panel{height:var(--console-h);border-top:1px solid var(--border);background:var(--bg-base);display:flex;flex-direction:column;transition:height .2s ease;flex-shrink:0}
+#console-panel.collapsed{height:34px;overflow:hidden}
+.console-header{display:flex;align-items:center;gap:3px;padding:0 8px;height:34px;flex-shrink:0;background:var(--bg-surface);border-bottom:1px solid var(--border)}
+.console-tab{padding:2px 8px;background:transparent;border:none;color:var(--text-secondary);font-size:11px;font-weight:600;cursor:pointer;border-radius:var(--radius);height:22px;display:flex;align-items:center;gap:3px;transition:all var(--transition)}
+.console-tab:hover{background:var(--bg-hover);color:var(--text-primary)}
+.console-tab.active{background:var(--bg-elevated);color:var(--text-primary)}
+.badge{padding:1px 5px;border-radius:99px;background:var(--red);color:#fff;font-size:9px;font-weight:700}
+.badge.warn{background:var(--yellow);color:#000}
+.badge.hidden{display:none}
+#console-output{flex:1;overflow-y:auto;padding:4px 0;font-family:var(--font-mono);font-size:11px;contain:strict}
+#console-output::-webkit-scrollbar{width:3px}
+#console-output::-webkit-scrollbar-thumb{background:var(--border)}
+.console-entry{display:flex;align-items:flex-start;gap:7px;padding:3px 10px;border-bottom:1px solid rgba(255,255,255,.02);line-height:1.5;word-break:break-all}
+.console-entry:hover{background:var(--bg-surface)}
+.console-entry .entry-type{width:13px;height:13px;flex-shrink:0;margin-top:1px}
+.console-log{color:var(--text-secondary)}
+.console-error{color:var(--red);background:rgba(255,79,79,.04)}
+.console-warn{color:var(--yellow);background:rgba(255,204,68,.04)}
+.console-info{color:var(--accent)}
+
+/* MODALS */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:500;backdrop-filter:blur(4px);animation:fadeIn .15s ease}
+.modal-overlay.hidden{display:none}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{background:var(--bg-elevated);border:1px solid var(--border-light);border-radius:var(--radius-lg);width:380px;max-width:95vw;box-shadow:var(--shadow-lg);animation:slideUp .2s ease}
+.modal-wide{width:520px}
+@keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.modal-header h3{font-size:14px;font-weight:600}
+.modal-close{background:transparent;border:none;color:var(--text-muted);font-size:14px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:var(--radius);transition:all var(--transition)}
+.modal-close:hover{background:var(--bg-hover);color:var(--text-primary)}
+.modal-body{padding:18px;display:flex;flex-direction:column;gap:12px}
+.modal-body label{font-size:11px;font-weight:600;color:var(--text-secondary)}
+.modal-input{width:100%;padding:7px 10px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;outline:none;transition:border-color var(--transition);font-family:var(--font-ui)}
+.modal-input:focus{border-color:var(--accent)}
+.modal-input-sm{padding:5px 8px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;outline:none}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--border)}
+.settings-grid{display:flex;flex-direction:column;gap:14px}
+.setting-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.setting-row label{font-size:12px;color:var(--text-primary)}
+.setting-control{display:flex;align-items:center;gap:8px}
+.range-input{-webkit-appearance:none;width:120px;height:3px;background:var(--border);border-radius:99px;outline:none}
+.range-input::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;background:var(--accent);border-radius:50%;cursor:pointer}
+.toggle-cb{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+.export-options{display:flex;flex-direction:column;gap:8px}
+.export-opt{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-lg);color:var(--text-primary);text-align:left;transition:all var(--transition);cursor:pointer}
+.export-opt:hover{border-color:var(--accent);background:var(--accent-glow)}
+.export-opt svg{width:22px;height:22px;flex-shrink:0;color:var(--accent)}
+.export-opt span{font-size:13px;font-weight:600;display:block}
+.export-opt small{font-size:11px;color:var(--text-muted);display:block;margin-top:2px}
+
+/* CONTEXT MENU */
+#context-menu{position:fixed;z-index:1000;background:var(--bg-elevated);border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:4px;min-width:160px;box-shadow:var(--shadow-lg);animation:fadeIn .1s ease}
+#context-menu.hidden{display:none}
+.ctx-item{display:block;width:100%;padding:6px 12px;background:transparent;border:none;color:var(--text-primary);font-size:12px;text-align:left;border-radius:var(--radius);transition:background var(--transition);display:flex;align-items:center;gap:8px}
+.ctx-item svg{width:12px;height:12px;flex-shrink:0;color:var(--text-muted)}
+.ctx-item:hover{background:var(--bg-hover)}
+.ctx-item.danger{color:var(--red)}
+.ctx-item.danger svg{color:var(--red)}
+.ctx-divider{height:1px;background:var(--border);margin:4px}
+
+/* FULLSCREEN */
+#fullscreen-overlay{position:fixed;inset:0;z-index:800;background:#fff;display:flex;flex-direction:column}
+#fullscreen-overlay.hidden{display:none}
+.fullscreen-bar{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;background:var(--bg-surface);border-bottom:1px solid var(--border);font-size:12px;color:var(--text-secondary);flex-shrink:0;gap:10px}
+#fullscreen-iframe{flex:1;border:none}
+
+/* TOAST */
+#toast-container{position:fixed;bottom:68px;right:14px;display:flex;flex-direction:column;gap:6px;z-index:900;pointer-events:none}
+.toast{padding:9px 14px;border-radius:var(--radius-lg);background:var(--bg-elevated);border:1px solid var(--border-light);color:var(--text-primary);font-size:12px;box-shadow:var(--shadow);animation:toastIn .25s ease;display:flex;align-items:center;gap:8px;max-width:280px}
+.toast.success{border-color:var(--green)}.toast.error{border-color:var(--red)}.toast.info{border-color:var(--accent)}
+@keyframes toastIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes toastOut{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(40px)}}
+.toast.out{animation:toastOut .25s ease forwards}
+.toast-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.toast.success .toast-dot{background:var(--green)}.toast.error .toast-dot{background:var(--red)}.toast.info .toast-dot{background:var(--accent)}
+
+/* SEARCH PANEL */
+#search-panel{position:absolute;top:0;right:0;background:var(--bg-elevated);border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:12px;display:flex;flex-direction:column;gap:8px;z-index:50;width:360px;box-shadow:var(--shadow-lg);animation:slideUp .15s ease}
+#search-panel.hidden{display:none}
+.search-row{display:flex;align-items:center;gap:6px}
+.search-input{flex:1;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:12px;padding:5px 8px;outline:none;font-family:var(--font-mono)}
+.search-input:focus{border-color:var(--accent)}
+.search-opts{display:flex;gap:3px}
+.search-opt-btn{width:22px;height:22px;border:none;border-radius:3px;background:transparent;color:var(--text-muted);font-size:11px;font-family:var(--font-mono);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.search-opt-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
+.search-opt-btn.active{background:var(--accent-glow);color:var(--accent)}
+.search-count{font-size:10px;color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap}
+
+/* MOBILE NAV */
+#mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:var(--mobile-nav-h);background:var(--bg-surface);border-top:1px solid var(--border);z-index:100}
+.mobile-nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:transparent;border:none;color:var(--text-muted);font-size:10px;font-weight:600;transition:color var(--transition);padding:8px 0;min-height:44px}
+.mobile-nav-btn svg{width:20px;height:20px}
+.mobile-nav-btn.active{color:var(--accent)}
+.mobile-nav-btn:active{opacity:.7}
+
+/* SCROLLBARS */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:var(--border-light)}
+
+/* ANIMATIONS */
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.spin{animation:spin 1s linear infinite}
+.resizing *{user-select:none!important;pointer-events:none!important}
+
+/* QUICK CREATE MENU */
+#quick-create-menu{position:absolute;right:8px;top:100%;margin-top:4px;background:var(--bg-elevated);border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:4px;min-width:140px;box-shadow:var(--shadow-lg);z-index:200;animation:fadeIn .1s ease}
+#quick-create-menu.hidden{display:none}
+.qc-item{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;background:transparent;border:none;color:var(--text-primary);font-size:12px;cursor:pointer;border-radius:var(--radius);transition:background var(--transition);text-align:left}
+.qc-item:hover{background:var(--bg-hover)}
+.qc-item .qc-ext{font-family:var(--font-mono);font-size:10px;font-weight:700;width:30px}
+
+/* RECENT FILES PANEL */
+.sidebar-section-title{font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--text-muted);padding:8px 12px 4px}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  :root{--sidebar-w:220px}
+  .app-title{display:none}
+  .device-switcher{display:none}
+}
+@media(max-width:700px){
+  #mobile-nav{display:flex}
+  #workspace{bottom:var(--mobile-nav-h)}
+  #topbar{padding:0 6px}
+  .app-title{display:none}
+  #sidebar{position:absolute;top:0;bottom:0;left:0;transform:translateX(calc(-1 * var(--sidebar-w)));box-shadow:var(--shadow-lg);z-index:50}
+  #sidebar.mobile-open{transform:translateX(0)}
+  #editor-area{flex-direction:column}
+  .resizer{display:none}
+  #editor-panel,#preview-panel{position:absolute;inset:0;transition:transform .25s ease}
+  #preview-panel{border-left:none;border-top:1px solid var(--border)}
+  #workspace.view-editor #editor-panel{transform:translateX(0);z-index:1}
+  #workspace.view-editor #preview-panel{transform:translateX(100%);z-index:0}
+  #workspace.view-preview #editor-panel{transform:translateX(-100%);z-index:0}
+  #workspace.view-preview #preview-panel{transform:translateX(0);z-index:1}
+  #workspace.view-console #editor-panel{transform:translateX(-100%);z-index:0}
+  #workspace.view-console #preview-panel{transform:translateX(100%);z-index:0}
+  #monaco-container{height:100%!important}
+  #mobile-textarea{font-size:16px!important}
+  .topbar-center{display:none}
+  .device-switcher{display:none}
+  #toast-container{bottom:calc(var(--mobile-nav-h) + 8px)}
+  .modal{width:95vw}
+  .edit-toolbar{display:none}
+}
+@media(max-width:480px){
+  :root{--topbar-h:42px}
+  .run-btn span{display:none}
+  #btn-settings{display:none}
+}
+@media(max-height:500px) and (max-width:900px){
+  :root{--topbar-h:38px;--mobile-nav-h:48px}
+  #mobile-nav{height:var(--mobile-nav-h)}
+}
+</style>
 </head>
 <body>
 
@@ -32,7 +399,11 @@
     <div class="app-logo"><span class="logo-bracket">&lt;</span><span>HTP</span><span class="logo-bracket">/&gt;</span></div>
     <span class="app-title">HTML Tester Pro</span>
   </div>
-  <div class="topbar-center" id="tab-bar"></div>
+  <div class="topbar-center" id="tab-bar-wrap">
+    <button id="tab-scroll-left" title="Scroll tabs left">‹</button>
+    <div id="tab-bar"></div>
+    <button id="tab-scroll-right" title="Scroll tabs right">›</button>
+  </div>
   <div class="topbar-right">
     <button id="btn-run" class="action-btn run-btn" title="Run Preview (Ctrl+Enter)">
       <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
@@ -54,7 +425,7 @@
 </header>
 
 <!-- MAIN WORKSPACE -->
-<div id="workspace">
+<div id="workspace" class="view-editor">
 
   <!-- SIDEBAR -->
   <aside id="sidebar">
@@ -75,10 +446,8 @@
         </button>
       </div>
     </div>
-    <!-- File Search -->
-    <div class="sidebar-search">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" id="file-search-input" placeholder="Search files..." autocomplete="off" spellcheck="false">
+    <div class="sidebar-search-wrap">
+      <input type="text" id="file-search-input" class="sidebar-search" placeholder="Search files…" spellcheck="false">
     </div>
     <div id="drop-zone">
       <div class="drop-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
@@ -91,7 +460,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-sm"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
         <span id="project-name-display">untitled-project</span>
       </div>
-      <div class="sidebar-stats"><span id="file-count-label">0 files</span></div>
+      <div class="sidebar-stats"><span id="file-count-label">0 files</span><span id="total-size-label"></span></div>
     </div>
   </aside>
 
@@ -102,7 +471,6 @@
     <div id="editor-panel" class="panel">
       <div class="panel-header">
         <span class="panel-label">EDITOR</span>
-        <!-- EDIT TOOLBAR -->
         <div class="edit-toolbar" id="edit-toolbar">
           <button class="tb-btn" id="btn-tb-selectall" title="Select All (Ctrl+A)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg>
@@ -130,80 +498,32 @@
             <span>Redo</span>
           </button>
           <div class="tb-sep"></div>
-          <button class="tb-btn" id="btn-tb-dup-line" title="Duplicate Line">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/><line x1="13" y1="12" x2="19" y2="12"/><line x1="16" y1="9" x2="16" y2="15"/></svg>
-            <span>Dup</span>
-          </button>
-          <button class="tb-btn" id="btn-tb-del-line" title="Delete Line (Ctrl+Shift+K)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="18" y1="9" x2="18" y2="20"/><line x1="15" y1="9" x2="21" y2="9"/></svg>
-            <span>Del Ln</span>
-          </button>
-          <div class="tb-sep"></div>
-          <button class="tb-btn" id="btn-tb-find" title="Find (Ctrl+F)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <span>Find</span>
-          </button>
-          <button class="tb-btn" id="btn-tb-replace" title="Find & Replace (Ctrl+H)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="5"/><path d="M15.5 15.5 21 21"/><path d="M13 17h5v4"/></svg>
-            <span>Replace</span>
-          </button>
-          <button class="tb-btn" id="btn-tb-goto" title="Go To Line (Ctrl+G)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>
-            <span>Go To</span>
-          </button>
-          <div class="tb-sep"></div>
-          <button class="tb-btn" id="btn-tb-clear" title="Clear File">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          <button class="tb-btn" id="btn-tb-clear" title="Clear All Content">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
             <span>Clear</span>
           </button>
-          <button class="tb-btn tb-btn-danger" id="btn-tb-clear-all" title="Clear All Project Files">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="4" y1="4" x2="20" y2="20"/></svg>
-            <span>Clear All</span>
-          </button>
-          <div class="tb-sep"></div>
-          <button class="tb-btn" id="btn-tb-format-html" title="Format HTML">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
-            <span>HTML</span>
-          </button>
-          <button class="tb-btn" id="btn-tb-format-css" title="Format CSS">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/><line x1="8" y1="15" x2="16" y2="15"/></svg>
-            <span>CSS</span>
-          </button>
-          <button class="tb-btn" id="btn-tb-format-js" title="Format JavaScript">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/><path d="M9 12 L13 12 L13 17 Q11 19 9 17" stroke-width="1.5"/></svg>
-            <span>JS</span>
-          </button>
-          <div class="tb-sep"></div>
-          <button class="tb-btn tb-toggle" id="btn-tb-wordwrap" title="Word Wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-            <span>Wrap</span>
-          </button>
-          <button class="tb-btn tb-toggle" id="btn-tb-linenums" title="Line Numbers">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>
-            <span>Nums</span>
-          </button>
-          <button class="tb-btn tb-toggle" id="btn-tb-minimap" title="Minimap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="14" y="6" width="5" height="12" rx="1" fill="currentColor" opacity=".3"/><line x1="6" y1="8" x2="11" y2="8"/><line x1="6" y1="11" x2="11" y2="11"/><line x1="6" y1="14" x2="11" y2="14"/></svg>
-            <span>Map</span>
+          <button class="tb-btn" id="btn-tb-comment" title="Toggle Comment (Ctrl+/)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="5" y2="12"/><line x1="3" y1="6" x2="9" y2="6"/><line x1="3" y1="18" x2="7" y2="18"/><path d="M13 6l4 6-4 6"/></svg>
+            <span>Comment</span>
           </button>
         </div>
         <div class="panel-actions">
-          <button class="icon-btn-sm" id="btn-search" title="Search (Ctrl+F)">
+          <button class="icon-btn-sm" id="btn-search" title="Find & Replace (Ctrl+H)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           </button>
-          <button class="icon-btn-sm" id="btn-format" title="Format Code">
+          <button class="icon-btn-sm" id="btn-format" title="Format Code (Alt+Shift+F)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="6" x2="3" y2="6"/><line x1="15" y1="12" x2="3" y2="12"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
           </button>
-          <button class="icon-btn-sm" id="btn-word-wrap" title="Toggle Word Wrap">
+          <button class="icon-btn-sm" id="btn-word-wrap" title="Toggle Word Wrap (Alt+Z)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
           </button>
-          <button class="icon-btn-sm" id="btn-editor-fullscreen" title="Fullscreen Editor">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          <button class="icon-btn-sm" id="btn-minimap" title="Toggle Minimap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="8" height="18" rx="1"/><rect x="14" y="3" width="8" height="8" rx="1"/></svg>
           </button>
         </div>
       </div>
       <div id="monaco-container"></div>
-      <textarea id="mobile-textarea" spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off" data-gramm="false" enterkeyhint="enter"></textarea>
+      <textarea id="mobile-textarea" spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off" data-gramm="false"></textarea>
       <div id="editor-empty-state">
         <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
         <h3>No file open</h3>
@@ -213,17 +533,17 @@
           <button class="action-btn secondary" id="btn-empty-upload">Upload Files</button>
         </div>
       </div>
-      <!-- Status Bar -->
       <div id="status-bar">
-        <span id="status-lang">HTML</span>
+        <span class="status-item" id="status-lang">HTML</span>
         <span class="status-sep">|</span>
-        <span id="status-pos">Ln 1, Col 1</span>
+        <span class="status-item" id="status-pos">Ln 1, Col 1</span>
         <span class="status-sep">|</span>
-        <span id="status-selection">No selection</span>
+        <span class="status-item" id="status-selection">No selection</span>
         <span class="status-sep">|</span>
-        <span id="status-chars">0 chars</span>
+        <span class="status-item" id="status-chars">0 chars</span>
         <span class="status-sep">|</span>
-        <span id="status-lines">0 lines</span>
+        <span class="status-item" id="status-lines">0 lines</span>
+        <span id="status-modified" style="margin-left:auto;padding:0 8px;font-size:10px;color:var(--yellow)"></span>
       </div>
     </div>
 
@@ -241,22 +561,11 @@
           <button class="device-btn" data-device="phone" title="Phone Portrait"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2" width="10" height="20" rx="3"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></button>
           <button class="device-btn" data-device="phone-land" title="Phone Landscape"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="10" rx="3"/><line x1="6" y1="12" x2="6.01" y2="12"/></svg></button>
         </div>
-        <!-- Auto Preview toggle -->
-        <div class="auto-preview-wrap">
-          <label class="toggle-label" title="Auto Preview">
-            <input type="checkbox" id="chk-auto-preview" checked>
-            <span class="toggle-slider"></span>
-          </label>
-          <span class="auto-preview-text">Auto</span>
-        </div>
         <div class="panel-actions">
-          <button class="icon-btn-sm" id="btn-refresh-preview" title="Refresh Preview (Ctrl+Enter)">
+          <button class="icon-btn-sm" id="btn-refresh-preview" title="Refresh (Ctrl+Enter)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
           </button>
-          <button class="icon-btn-sm" id="btn-hard-reload" title="Hard Reload (clears cache)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.1"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>
-          </button>
-          <button class="icon-btn-sm" id="btn-fullscreen-preview" title="Full Screen Preview">
+          <button class="icon-btn-sm" id="btn-fullscreen-preview" title="Full Screen">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
           </button>
           <button class="icon-btn-sm" id="btn-newtab-preview" title="Open in New Tab">
@@ -267,15 +576,6 @@
       <div id="preview-viewport">
         <div id="device-frame" class="device-desktop">
           <iframe id="preview-iframe" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-pointer-lock allow-popups" title="Preview"></iframe>
-          <!-- Error Overlay -->
-          <div id="preview-error-overlay" class="hidden">
-            <div class="preview-error-inner">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-              <h3>Preview Error</h3>
-              <p id="preview-error-msg"></p>
-              <button class="action-btn secondary" id="btn-dismiss-error">Dismiss</button>
-            </div>
-          </div>
         </div>
         <div id="preview-empty">
           <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
@@ -283,22 +583,12 @@
           <p>Add an HTML file and click Run</p>
         </div>
       </div>
-      <!-- Preview Performance Monitor -->
-      <div id="preview-perf-bar" class="hidden">
-        <span class="perf-item"><span class="perf-dot dot-green"></span>Load: <span id="perf-load-time">—</span>ms</span>
-        <span class="perf-item"><span class="perf-dot dot-blue"></span>Errors: <span id="perf-error-count">0</span></span>
-        <span class="perf-item"><span class="perf-dot dot-yellow"></span>Warns: <span id="perf-warn-count">0</span></span>
-        <button class="icon-btn-sm" id="btn-toggle-perf" title="Hide Perf Monitor">×</button>
-      </div>
       <div id="console-panel">
         <div class="console-header">
           <button class="console-tab active" data-tab="console">Console</button>
           <button class="console-tab" data-tab="errors">Errors <span id="error-badge" class="badge hidden">0</span></button>
           <button class="console-tab" data-tab="warnings">Warnings <span id="warn-badge" class="badge warn hidden">0</span></button>
           <div style="flex:1"></div>
-          <button class="icon-btn-sm" id="btn-show-perf" title="Performance Monitor">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          </button>
           <button class="icon-btn-sm" id="btn-clear-console" title="Clear Console">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
           </button>
@@ -332,9 +622,7 @@
   </button>
 </nav>
 
-<!-- ===== MODALS ===== -->
-
-<!-- New File -->
+<!-- MODALS -->
 <div id="modal-new-file" class="modal-overlay hidden">
   <div class="modal">
     <div class="modal-header"><h3>New File</h3><button class="modal-close">✕</button></div>
@@ -343,6 +631,13 @@
       <input type="text" id="input-new-filename" placeholder="index.html" class="modal-input">
       <label>Location</label>
       <select id="select-new-file-folder" class="modal-input"></select>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="tb-btn" data-template="html" style="border:1px solid var(--border);border-radius:var(--radius)"><span style="color:#e8703a;font-weight:700">.html</span></button>
+        <button class="tb-btn" data-template="css" style="border:1px solid var(--border);border-radius:var(--radius)"><span style="color:#42a5f5;font-weight:700">.css</span></button>
+        <button class="tb-btn" data-template="js" style="border:1px solid var(--border);border-radius:var(--radius)"><span style="color:#ffd464;font-weight:700">.js</span></button>
+        <button class="tb-btn" data-template="json" style="border:1px solid var(--border);border-radius:var(--radius)"><span style="color:#7bc67e;font-weight:700">.json</span></button>
+        <button class="tb-btn" data-template="txt" style="border:1px solid var(--border);border-radius:var(--radius)"><span style="font-weight:700">.txt</span></button>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="action-btn secondary modal-cancel">Cancel</button>
@@ -351,7 +646,6 @@
   </div>
 </div>
 
-<!-- New Folder -->
 <div id="modal-new-folder" class="modal-overlay hidden">
   <div class="modal">
     <div class="modal-header"><h3>New Folder</h3><button class="modal-close">✕</button></div>
@@ -368,7 +662,6 @@
   </div>
 </div>
 
-<!-- Rename -->
 <div id="modal-rename" class="modal-overlay hidden">
   <div class="modal">
     <div class="modal-header"><h3>Rename</h3><button class="modal-close">✕</button></div>
@@ -383,70 +676,36 @@
   </div>
 </div>
 
-<!-- Clear File Confirm -->
 <div id="modal-clear" class="modal-overlay hidden">
   <div class="modal">
     <div class="modal-header"><h3>Clear File Content</h3><button class="modal-close">✕</button></div>
     <div class="modal-body">
-      <p style="color:var(--text-secondary);font-size:14px;">This will erase all content in the current file. This action can be undone with Ctrl+Z.</p>
+      <p style="color:var(--text-secondary);font-size:13px;">This will erase all content in the current file. This can be undone with Ctrl+Z.</p>
     </div>
     <div class="modal-footer">
       <button class="action-btn secondary modal-cancel">Cancel</button>
-      <button class="action-btn danger" id="btn-clear-confirm">Clear File</button>
+      <button class="action-btn danger" id="btn-clear-confirm">Clear All</button>
     </div>
   </div>
 </div>
 
-<!-- Clear All Project Files Confirm -->
-<div id="modal-clear-all" class="modal-overlay hidden">
-  <div class="modal">
-    <div class="modal-header"><h3>Clear All Project Files</h3><button class="modal-close">✕</button></div>
-    <div class="modal-body">
-      <p style="color:var(--red);font-size:14px;font-weight:600;">⚠ This will permanently delete ALL files in the project. This cannot be undone.</p>
-    </div>
-    <div class="modal-footer">
-      <button class="action-btn secondary modal-cancel">Cancel</button>
-      <button class="action-btn danger" id="btn-clear-all-confirm">Delete Everything</button>
-    </div>
-  </div>
-</div>
-
-<!-- Go To Line -->
-<div id="modal-goto" class="modal-overlay hidden">
-  <div class="modal modal-sm">
-    <div class="modal-header"><h3>Go To Line</h3><button class="modal-close">✕</button></div>
-    <div class="modal-body">
-      <label>Line number</label>
-      <input type="number" id="input-goto-line" min="1" class="modal-input" placeholder="1">
-    </div>
-    <div class="modal-footer">
-      <button class="action-btn secondary modal-cancel">Cancel</button>
-      <button class="action-btn" id="btn-goto-confirm">Go</button>
-    </div>
-  </div>
-</div>
-
-<!-- Export Modal -->
 <div id="modal-export" class="modal-overlay hidden">
   <div class="modal">
     <div class="modal-header"><h3>Export Project</h3><button class="modal-close">✕</button></div>
     <div class="modal-body">
-      <p style="color:var(--text-secondary);font-size:13px;margin-bottom:12px;">Choose export format:</p>
+      <p style="color:var(--text-secondary);font-size:12px;margin-bottom:4px;">Choose export format:</p>
       <div class="export-options">
         <button class="export-opt" id="btn-export-html-only">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          <span>Single HTML</span>
-          <small>Inline all CSS &amp; JS into one .html file</small>
+          <div><span>Single HTML</span><small>Inline all CSS &amp; JS into one .html file</small></div>
         </button>
-        <button class="export-opt" id="btn-export-zip-native">
+        <button class="export-opt" id="btn-export-zip-jszip">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-          <span>ZIP Archive</span>
-          <small>Download all files as .zip (no JSZip)</small>
+          <div><span>ZIP Archive</span><small>Download all files as .zip (preserves structure)</small></div>
         </button>
         <button class="export-opt" id="btn-export-each">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <span>Download Each File</span>
-          <small>Download every text file individually</small>
+          <div><span>Download Each File</span><small>Download every text file individually</small></div>
         </button>
       </div>
     </div>
@@ -456,7 +715,6 @@
   </div>
 </div>
 
-<!-- Settings -->
 <div id="modal-settings" class="modal-overlay hidden">
   <div class="modal modal-wide">
     <div class="modal-header"><h3>Settings</h3><button class="modal-close">✕</button></div>
@@ -478,15 +736,15 @@
           </select>
         </div>
         <div class="setting-row"><label>Word Wrap</label><input type="checkbox" id="setting-wordwrap" class="toggle-cb"></div>
-        <div class="setting-row"><label>Line Numbers</label><input type="checkbox" id="setting-linenums" checked class="toggle-cb"></div>
-        <div class="setting-row"><label>Minimap</label><input type="checkbox" id="setting-minimap" class="toggle-cb"></div>
-        <div class="setting-row"><label>Auto Preview</label><input type="checkbox" id="setting-autorefresh" checked class="toggle-cb"></div>
+        <div class="setting-row"><label>Auto Refresh Preview</label><input type="checkbox" id="setting-autorefresh" checked class="toggle-cb"></div>
         <div class="setting-row"><label>Auto Save</label><input type="checkbox" id="setting-autosave" checked class="toggle-cb"></div>
         <div class="setting-row"><label>Show Edit Toolbar</label><input type="checkbox" id="setting-toolbar" checked class="toggle-cb"></div>
         <div class="setting-row"><label>Show Status Bar</label><input type="checkbox" id="setting-statusbar" checked class="toggle-cb"></div>
+        <div class="setting-row"><label>Show Minimap</label><input type="checkbox" id="setting-minimap" class="toggle-cb"></div>
+        <div class="setting-row"><label>Bracket Pair Colorization</label><input type="checkbox" id="setting-bracket-color" checked class="toggle-cb"></div>
         <div class="setting-row">
           <label>Project Name</label>
-          <input type="text" id="setting-project-name" class="modal-input" placeholder="my-project">
+          <input type="text" id="setting-project-name" class="modal-input" placeholder="my-project" style="max-width:200px">
         </div>
       </div>
     </div>
@@ -497,40 +755,2217 @@
   </div>
 </div>
 
-<!-- Context Menu -->
+<!-- CONTEXT MENU -->
 <div id="context-menu" class="hidden">
-  <button class="ctx-item" data-action="open">Open</button>
-  <button class="ctx-item" data-action="rename">Rename</button>
-  <button class="ctx-item" data-action="duplicate">Duplicate</button>
+  <button class="ctx-item" data-action="open">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    Open
+  </button>
+  <button class="ctx-item" data-action="rename">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    Rename
+  </button>
+  <button class="ctx-item" data-action="duplicate">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    Duplicate
+  </button>
+  <button class="ctx-item" data-action="favorite">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    Favorite
+  </button>
   <div class="ctx-divider"></div>
-  <button class="ctx-item danger" data-action="delete">Delete</button>
+  <button class="ctx-item danger" data-action="delete">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+    Delete
+  </button>
 </div>
 
-<!-- Fullscreen Preview -->
+<!-- FULLSCREEN PREVIEW -->
 <div id="fullscreen-overlay" class="hidden">
   <div class="fullscreen-bar">
     <span>Preview — Full Screen</span>
-    <button id="btn-exit-fullscreen" class="action-btn secondary">Exit (Esc)</button>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button id="btn-fullscreen-newtab" class="action-btn secondary" style="font-size:11px;padding:4px 10px">Open in Tab</button>
+      <button id="btn-exit-fullscreen" class="action-btn secondary" style="font-size:11px;padding:4px 10px">Exit</button>
+    </div>
   </div>
   <iframe id="fullscreen-iframe" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-pointer-lock allow-popups" title="Full Screen Preview"></iframe>
 </div>
 
-<!-- Fullscreen Editor -->
-<div id="editor-fullscreen-overlay" class="hidden">
-  <div class="fullscreen-bar">
-    <span id="editor-fullscreen-title">Editor — Full Screen</span>
-    <button id="btn-exit-editor-fullscreen" class="action-btn secondary">Exit (Esc)</button>
-  </div>
-  <div id="editor-fullscreen-container"></div>
-</div>
-
-<!-- Toast -->
+<!-- TOAST -->
 <div id="toast-container"></div>
 
-<!-- Hidden inputs -->
+<!-- HIDDEN INPUTS -->
 <input type="file" id="file-input-upload" multiple accept="*/*" style="display:none">
 <input type="file" id="file-input-zip" accept=".zip" style="display:none">
 
-<script src="script.js"></script>
+<script>
+'use strict';
+
+/* ============================================================
+   GLOBAL STATE
+============================================================ */
+const App = {
+  files: {},
+  openTabs: [],
+  activeTab: null,
+  pinnedTabs: new Set(),
+  monacoEditor: null,
+  monacoModels: {},
+  monacoViewStates: {},
+  monacoReady: false,
+  isMobile: false,
+  minimapEnabled: false,
+  settings: {
+    fontSize: 14,
+    tabSize: 4,
+    wordWrap: false,
+    autoRefresh: true,
+    autoSave: true,
+    projectName: 'untitled-project',
+    showToolbar: true,
+    showStatusBar: true,
+    showMinimap: false,
+    bracketColor: true,
+  },
+  previewBlobUrls: {},
+  currentDevice: 'desktop',
+  ctxTarget: null,
+  renameTarget: null,
+  consoleLogs: [],
+  errorCount: 0,
+  warnCount: 0,
+  touchStartX: 0,
+  touchStartY: 0,
+  currentView: 'editor',
+  autoSaveTimer: null,
+  previewDebounceTimer: null,
+  isResizing: false,
+  favorites: new Set(),
+  recentFiles: [],
+  fileSearchQuery: '',
+  pasteInProgress: false,
+  keyHeldTimers: {},
+};
+
+/* ============================================================
+   UTILS
+============================================================ */
+const $ = id => document.getElementById(id);
+const qsa = (sel, el=document) => [...el.querySelectorAll(sel)];
+
+function toast(msg, type='info', dur=3000) {
+  const c = $('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span class="toast-dot"></span><span>${escapeHtml(String(msg))}</span>`;
+  c.appendChild(t);
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 280); }, dur);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function isBinaryType(name) {
+  return /\.(png|jpg|jpeg|gif|webp|bmp|ico|svg|woff|woff2|ttf|eot|otf|mp4|mp3|ogg|wav|pdf)$/i.test(name);
+}
+function isImageType(name) {
+  return /\.(png|jpg|jpeg|gif|webp|bmp|ico|svg)$/i.test(name);
+}
+function isFontType(name) {
+  return /\.(woff|woff2|ttf|eot|otf)$/i.test(name);
+}
+function getLanguage(name) {
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  const map = {
+    html:'html', htm:'html', css:'css', js:'javascript', ts:'typescript',
+    json:'json', md:'markdown', svg:'xml', xml:'xml', txt:'plaintext',
+    py:'python', php:'php', rb:'ruby', sh:'shell', yaml:'yaml', yml:'yaml',
+  };
+  return map[ext] || 'plaintext';
+}
+function getFileIconClass(name) {
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  if (['html','htm'].includes(ext)) return 'icon-html';
+  if (ext === 'css') return 'icon-css';
+  if (['js','ts'].includes(ext)) return 'icon-js';
+  if (ext === 'json') return 'icon-json';
+  if (isImageType(name)) return 'icon-img';
+  if (isFontType(name)) return 'icon-font';
+  return 'icon-txt';
+}
+function getFileIconSVG(name, isFolder=false) {
+  if (isFolder) return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-folder"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
+  const cls = getFileIconClass(name);
+  const ext = (name.split('.').pop()||'').toLowerCase();
+  if (['html','htm'].includes(ext)) return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="${cls}"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="11" y2="17"/></svg>`;
+  if (ext === 'css') return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="${cls}"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>`;
+  if (['js','ts'].includes(ext)) return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="${cls}"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M10 12 L14 12 L14 17 Q12 19 10 17" stroke-width="1.5"/></svg>`;
+  if (isImageType(name)) return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="${cls}"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+  if (ext === 'json') return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="${cls}"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M10 13a2 2 0 0 0 2 2 2 2 0 0 0 2-2 2 2 0 0 0-2-2" stroke-width="1.5"/></svg>`;
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="${cls}"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+}
+function normPath(p) { return p.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/^\//, ''); }
+function getDirname(p) { const parts = p.split('/'); parts.pop(); return parts.join('/'); }
+function getBasename(p) { return p.split('/').pop(); }
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+/* ============================================================
+   INIT
+============================================================ */
+window.addEventListener('load', async () => {
+  App.isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry/i.test(navigator.userAgent) || window.innerWidth < 700;
+  loadSettings();
+  loadFavorites();
+  loadSession();
+  setupResizer();
+  setupDropZone();
+  setupFileInputs();
+  setupButtons();
+  setupMobileNav();
+  setupSwipe();
+  setupContextMenu();
+  setupKeyboardShortcuts();
+  setupDeviceSwitcher();
+  initConsoleCapture();
+  setupFileSearch();
+  setupTabScrolling();
+  setWorkspaceView('editor');
+  updateFileCountLabel();
+  await initMonaco();
+  setTimeout(() => {
+    const ls = $('loading-screen');
+    ls.classList.add('fade-out');
+    setTimeout(() => ls.remove(), 500);
+  }, 1200);
+});
+
+/* ============================================================
+   SETTINGS
+============================================================ */
+function loadSettings() {
+  try {
+    const s = localStorage.getItem('htp_settings');
+    if (s) Object.assign(App.settings, JSON.parse(s));
+  } catch(e) {}
+  applySettings();
+}
+function saveSettings() {
+  try { localStorage.setItem('htp_settings', JSON.stringify(App.settings)); } catch(e) {}
+}
+function applySettings() {
+  if (App.monacoEditor) {
+    App.monacoEditor.updateOptions({
+      fontSize: App.settings.fontSize,
+      tabSize: App.settings.tabSize,
+      wordWrap: App.settings.wordWrap ? 'on' : 'off',
+      minimap: { enabled: App.settings.showMinimap },
+      bracketPairColorization: { enabled: App.settings.bracketColor },
+    });
+  }
+  const pn = $('project-name-display');
+  if (pn) pn.textContent = App.settings.projectName;
+  const et = $('edit-toolbar');
+  if (et) et.style.display = App.settings.showToolbar ? 'flex' : 'none';
+  const sb = $('status-bar');
+  if (sb) sb.style.display = App.settings.showStatusBar ? 'flex' : 'none';
+}
+
+function loadFavorites() {
+  try {
+    const f = localStorage.getItem('htp_favorites');
+    if (f) App.favorites = new Set(JSON.parse(f));
+  } catch(e) {}
+}
+function saveFavorites() {
+  try { localStorage.setItem('htp_favorites', JSON.stringify([...App.favorites])); } catch(e) {}
+}
+
+/* ============================================================
+   SESSION STORAGE
+============================================================ */
+function saveSession() {
+  try {
+    const serializable = {};
+    for (const [path, f] of Object.entries(App.files)) {
+      if (!f.isFolder && typeof f.content === 'string') {
+        // Only store first 500KB per file to prevent localStorage overflow
+        const content = f.content.length > 512000 ? f.content.slice(0, 512000) : f.content;
+        serializable[path] = { name: f.name, path: f.path, content, type: f.type, isFolder: false };
+      } else if (f.isFolder) {
+        serializable[path] = { name: f.name, path: f.path, isFolder: true };
+      }
+    }
+    localStorage.setItem('htp_session_files', JSON.stringify(serializable));
+    localStorage.setItem('htp_session_tabs', JSON.stringify(App.openTabs));
+    localStorage.setItem('htp_session_active', App.activeTab || '');
+    localStorage.setItem('htp_session_pinned', JSON.stringify([...App.pinnedTabs]));
+  } catch(e) { /* storage full - skip */ }
+}
+function loadSession() {
+  try {
+    const fs = localStorage.getItem('htp_session_files');
+    const tabs = localStorage.getItem('htp_session_tabs');
+    const active = localStorage.getItem('htp_session_active');
+    const pinned = localStorage.getItem('htp_session_pinned');
+    if (fs) {
+      const parsed = JSON.parse(fs);
+      for (const [path, f] of Object.entries(parsed)) App.files[path] = f;
+    }
+    if (tabs) App.openTabs = JSON.parse(tabs) || [];
+    App.openTabs = App.openTabs.filter(p => App.files[p]);
+    if (pinned) App.pinnedTabs = new Set(JSON.parse(pinned));
+    if (active && App.files[active]) App.activeTab = active;
+    else if (App.openTabs.length) App.activeTab = App.openTabs[0];
+  } catch(e) {}
+  renderFileTree();
+  renderTabs();
+  if (App.activeTab) activateTab(App.activeTab, true);
+  else showEditorEmptyState(true);
+}
+
+/* ============================================================
+   MONACO EDITOR
+============================================================ */
+async function initMonaco() {
+  return new Promise((resolve) => {
+    if (typeof require === 'undefined') {
+      App.isMobile = true;
+      resolve();
+      return;
+    }
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' }});
+    require(['vs/editor/editor.main'], () => {
+      monaco.editor.defineTheme('htp-dark', {
+        base: 'vs-dark',
+        inherit: true,
+        rules: [
+          { token: 'comment', foreground: '546078', fontStyle: 'italic' },
+          { token: 'keyword', foreground: 'c678dd' },
+          { token: 'string', foreground: '98c379' },
+          { token: 'number', foreground: 'd19a66' },
+          { token: 'tag', foreground: 'e06c75' },
+          { token: 'attribute.name', foreground: 'd19a66' },
+          { token: 'attribute.value', foreground: '98c379' },
+          { token: 'delimiter', foreground: 'abb2bf' },
+        ],
+        colors: {
+          'editor.background': '#0a0c10',
+          'editor.foreground': '#c9d1e0',
+          'editorLineNumber.foreground': '#2c3450',
+          'editorLineNumber.activeForeground': '#546078',
+          'editor.selectionBackground': '#253050',
+          'editor.lineHighlightBackground': '#0f1117',
+          'editorCursor.foreground': '#4f8eff',
+          'editorWhitespace.foreground': '#1f2535',
+          'editorIndentGuide.background': '#1f2535',
+          'editorIndentGuide.activeBackground': '#2c3450',
+          'scrollbarSlider.background': '#1f253566',
+          'scrollbarSlider.hoverBackground': '#2c345066',
+          'minimap.background': '#0a0c10',
+          'editorGutter.background': '#0a0c10',
+          'editorOverviewRuler.border': '#1f2535',
+        }
+      });
+
+      App.monacoEditor = monaco.editor.create($('monaco-container'), {
+        value: '',
+        language: 'html',
+        theme: 'htp-dark',
+        fontSize: App.settings.fontSize,
+        tabSize: App.settings.tabSize,
+        wordWrap: App.settings.wordWrap ? 'on' : 'off',
+        minimap: { enabled: App.settings.showMinimap },
+        scrollBeyondLastLine: false,
+        automaticLayout: true,
+        fontFamily: "'JetBrains Mono', monospace",
+        fontLigatures: true,
+        lineNumbers: 'on',
+        glyphMargin: false,
+        folding: true,
+        foldingStrategy: 'indentation',
+        renderWhitespace: 'selection',
+        smoothScrolling: true,
+        cursorBlinking: 'smooth',
+        cursorSmoothCaretAnimation: 'on',
+        formatOnPaste: false, // disabled for large paste perf
+        suggest: { showMethods: true, showFunctions: true, showConstructors: true },
+        quickSuggestions: { other: true, comments: false, strings: true },
+        bracketPairColorization: { enabled: App.settings.bracketColor },
+        multiCursorModifier: 'ctrlCmd',
+        columnSelection: false,
+        mouseWheelZoom: false,
+        padding: { top: 6, bottom: 6 },
+        // Performance-critical options
+        renderValidationDecorations: 'on',
+        largeFileOptimizations: true,
+        maxTokenizationLineLength: 20000,
+        stopRenderingLineAfter: 10000,
+        scrollbar: {
+          verticalScrollbarSize: 6,
+          horizontalScrollbarSize: 6,
+          useShadows: false,
+        },
+      });
+
+      App.monacoReady = true;
+
+      // FIXED: Smooth hold-backspace/delete using model content change batching
+      let contentChangeTimer = null;
+      let pendingUpdate = false;
+
+      App.monacoEditor.onDidChangeModelContent((e) => {
+        if (!App.activeTab) return;
+        const f = App.files[App.activeTab];
+        if (!f) return;
+
+        // Update content immediately (no getValue call during rapid deletes)
+        pendingUpdate = true;
+
+        clearTimeout(contentChangeTimer);
+        contentChangeTimer = setTimeout(() => {
+          if (!pendingUpdate) return;
+          pendingUpdate = false;
+          if (!App.activeTab || !App.files[App.activeTab]) return;
+          const val = App.monacoEditor.getValue();
+          App.files[App.activeTab].content = val;
+          markTabModified(App.activeTab, true);
+          updateStatusBar();
+
+          if (App.settings.autoSave) {
+            clearTimeout(App.autoSaveTimer);
+            App.autoSaveTimer = setTimeout(() => {
+              if (!App.activeTab) return;
+              markTabModified(App.activeTab, false);
+              saveSession();
+              if (App.settings.autoRefresh) schedulePreview();
+            }, 1000);
+          }
+        }, 150);
+      });
+
+      // Status bar
+      App.monacoEditor.onDidChangeCursorPosition(() => updateStatusBar());
+      App.monacoEditor.onDidChangeCursorSelection(() => updateStatusBar());
+
+      if (App.isMobile || 'ontouchstart' in window) patchMonacoForMobile();
+
+      showEditorEmptyState(!App.activeTab);
+      resolve();
+    });
+  });
+}
+
+function patchMonacoForMobile() {
+  const container = $('monaco-container');
+  container.addEventListener('touchend', () => {
+    setTimeout(() => {
+      if (App.monacoEditor) {
+        App.monacoEditor.focus();
+        const ta = container.querySelector('textarea.inputarea');
+        if (ta) { ta.focus(); ta.click(); }
+      }
+    }, 50);
+  }, { passive: true });
+}
+
+// Debounced preview to avoid spamming on large files
+function schedulePreview() {
+  clearTimeout(App.previewDebounceTimer);
+  App.previewDebounceTimer = setTimeout(runPreview, 400);
+}
+
+function setEditorContent(path) {
+  const f = App.files[path];
+  if (!f || f.isFolder) return;
+
+  if (isBinaryType(f.name) && !(typeof f.content === 'string')) {
+    showEditorEmptyState(false);
+    if (App.monacoEditor) {
+      const uri = monaco.Uri.parse(`file:///binary_${path}`);
+      let m;
+      try { m = monaco.editor.getModel(uri); } catch(e) {}
+      if (!m) m = monaco.editor.createModel(`// Binary file: ${f.name}\n// Cannot display binary content.`, 'plaintext', uri);
+      App.monacoEditor.setModel(m);
+    }
+    return;
+  }
+
+  const content = typeof f.content === 'string' ? f.content : '';
+
+  if (App.monacoReady && App.monacoEditor) {
+    showEditorEmptyState(false);
+    const lang = getLanguage(f.name);
+
+    // Save view state of current model before switching
+    if (App.activeTab && App.monacoEditor.getModel()) {
+      App.monacoViewStates[App.activeTab] = App.monacoEditor.saveViewState();
+    }
+
+    if (App.monacoModels[path]) {
+      App.monacoEditor.setModel(App.monacoModels[path]);
+    } else {
+      const uri = monaco.Uri.parse(`file:///${path}`);
+      let model;
+      try { model = monaco.editor.getModel(uri); } catch(e) {}
+      if (!model) {
+        // Large file: use chunked insertion for performance
+        if (content.length > 200000) {
+          model = monaco.editor.createModel('', lang, uri);
+          App.monacoModels[path] = model;
+          App.monacoEditor.setModel(model);
+          insertLargeContent(model, content);
+        } else {
+          model = monaco.editor.createModel(content, lang, uri);
+        }
+      }
+      App.monacoModels[path] = model;
+      App.monacoEditor.setModel(model);
+    }
+
+    // Restore view state if available
+    if (App.monacoViewStates[path]) {
+      App.monacoEditor.restoreViewState(App.monacoViewStates[path]);
+    }
+
+    updateStatusBar();
+  } else {
+    showMobileTextareaFallback(content);
+  }
+}
+
+// Large content insertion using chunks with requestAnimationFrame
+function insertLargeContent(model, content) {
+  const CHUNK = 50000;
+  let offset = 0;
+  const lines = content.split('\n');
+  const totalLines = lines.length;
+  let lineIdx = 0;
+
+  function insertChunk() {
+    if (lineIdx >= totalLines) return;
+    const chunkLines = lines.slice(lineIdx, lineIdx + 2000);
+    lineIdx += 2000;
+    const chunkText = chunkLines.join('\n');
+    const lineCount = model.getLineCount();
+    const lastCol = model.getLineMaxColumn(lineCount);
+    const edit = {
+      range: {
+        startLineNumber: lineCount,
+        startColumn: lineCount === 1 && model.getValue() === '' ? 1 : lastCol + (lineCount > 1 ? 0 : 0),
+        endLineNumber: lineCount,
+        endColumn: lastCol
+      },
+      text: lineIdx > 2000 ? '\n' + chunkText : chunkText,
+      forceMoveMarkers: true
+    };
+    // Use pushEditOperations for batched edit
+    model.pushEditOperations([], [edit], () => null);
+    if (lineIdx < totalLines) requestAnimationFrame(insertChunk);
+  }
+
+  requestAnimationFrame(insertChunk);
+}
+
+function showMobileTextareaFallback(content) {
+  showEditorEmptyState(false);
+  $('monaco-container').style.display = 'none';
+  const ta = $('mobile-textarea');
+  ta.style.display = 'block';
+  ta.value = content;
+
+  // Debounced input handler to fix hold-delete lag
+  let mobileTimer = null;
+  ta.oninput = () => {
+    clearTimeout(mobileTimer);
+    mobileTimer = setTimeout(() => {
+      if (!App.activeTab) return;
+      const f = App.files[App.activeTab];
+      if (f) {
+        f.content = ta.value;
+        markTabModified(App.activeTab, true);
+        if (App.settings.autoSave) {
+          clearTimeout(App.autoSaveTimer);
+          App.autoSaveTimer = setTimeout(() => {
+            markTabModified(App.activeTab, false);
+            saveSession();
+            if (App.settings.autoRefresh) schedulePreview();
+          }, 1000);
+        }
+      }
+    }, 50);
+  };
+
+  ta.onkeydown = (e) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const start = ta.selectionStart, end = ta.selectionEnd;
+      const spaces = ' '.repeat(App.settings.tabSize);
+      ta.value = ta.value.substring(0, start) + spaces + ta.value.substring(end);
+      ta.selectionStart = ta.selectionEnd = start + spaces.length;
+      ta.dispatchEvent(new Event('input'));
+    }
+  };
+}
+
+/* ============================================================
+   STATUS BAR
+============================================================ */
+function updateStatusBar() {
+  if (!App.monacoEditor || !App.monacoReady) return;
+  requestAnimationFrame(() => {
+    const model = App.monacoEditor.getModel();
+    if (!model) return;
+    const pos = App.monacoEditor.getPosition();
+    const sel = App.monacoEditor.getSelection();
+    const selLen = sel ? model.getValueLengthInRange(sel) : 0;
+    const lineCount = model.getLineCount();
+    const charCount = model.getValueLength();
+
+    const lang = $('status-lang');
+    const posEl = $('status-pos');
+    const selEl = $('status-selection');
+    const charsEl = $('status-chars');
+    const linesEl = $('status-lines');
+
+    if (lang && App.activeTab) lang.textContent = getLanguage(App.files[App.activeTab]?.name || '').toUpperCase();
+    if (posEl && pos) posEl.textContent = `Ln ${pos.lineNumber}, Col ${pos.column}`;
+    if (selEl) selEl.textContent = selLen > 0 ? `${selLen} selected` : 'No selection';
+    if (charsEl) charsEl.textContent = formatBytes(charCount);
+    if (linesEl) linesEl.textContent = `${lineCount} lines`;
+  });
+}
+
+/* ============================================================
+   VIRTUAL FILE SYSTEM
+============================================================ */
+function addFile(path, name, content, type) {
+  path = normPath(path);
+  // Handle duplicate names
+  if (App.files[path] && App.files[path].content === content) return;
+  App.files[path] = { name, path, content, type: type || 'text', isFolder: false };
+  const dir = getDirname(path);
+  if (dir) ensureFolder(dir);
+  addRecentFile(path);
+}
+
+function addFolder(path) {
+  path = normPath(path);
+  const name = getBasename(path);
+  if (App.files[path]) return;
+  App.files[path] = { name, path, isFolder: true };
+  const parent = getDirname(path);
+  if (parent) ensureFolder(parent);
+}
+
+function ensureFolder(path) {
+  path = normPath(path);
+  if (!path || App.files[path]) return;
+  const name = getBasename(path);
+  App.files[path] = { name, path, isFolder: true };
+  const parent = getDirname(path);
+  if (parent) ensureFolder(parent);
+}
+
+function deleteFile(path) {
+  const toDelete = Object.keys(App.files).filter(p => p === path || p.startsWith(path + '/'));
+  toDelete.forEach(p => {
+    revokeBlobUrl(p);
+    delete App.files[p];
+    const ti = App.openTabs.indexOf(p);
+    if (ti !== -1) App.openTabs.splice(ti, 1);
+    App.pinnedTabs.delete(p);
+    App.favorites.delete(p);
+    if (App.monacoModels[p]) {
+      try { App.monacoModels[p].dispose(); } catch(e) {}
+      delete App.monacoModels[p];
+    }
+    delete App.monacoViewStates[p];
+  });
+  App.recentFiles = App.recentFiles.filter(p => App.files[p]);
+  if (App.activeTab && !App.files[App.activeTab]) {
+    App.activeTab = App.openTabs[0] || null;
+  }
+  renderTabs();
+  renderFileTree();
+  if (App.activeTab) activateTab(App.activeTab, true);
+  else showEditorEmptyState(true);
+  saveSession();
+  updateFileCountLabel();
+}
+
+function renameFile(oldPath, newName) {
+  const f = App.files[oldPath];
+  if (!f) return;
+  const dir = getDirname(oldPath);
+  const newPath = normPath(dir ? `${dir}/${newName}` : newName);
+  if (newPath === oldPath) return;
+  if (App.files[newPath]) { toast('A file with that name already exists', 'error'); return; }
+
+  const oldPrefix = oldPath + '/';
+  const entries = Object.entries(App.files);
+  for (const [p, file] of entries) {
+    if (p === oldPath || p.startsWith(oldPrefix)) {
+      const np = p === oldPath ? newPath : newPath + '/' + p.slice(oldPrefix.length);
+      App.files[np] = { ...file, name: p === oldPath ? newName : file.name, path: np };
+      delete App.files[p];
+      if (App.monacoModels[p]) { App.monacoModels[np] = App.monacoModels[p]; delete App.monacoModels[p]; }
+      if (App.monacoViewStates[p]) { App.monacoViewStates[np] = App.monacoViewStates[p]; delete App.monacoViewStates[p]; }
+      const ti = App.openTabs.indexOf(p);
+      if (ti !== -1) App.openTabs[ti] = np;
+      if (App.activeTab === p) App.activeTab = np;
+      if (App.pinnedTabs.has(p)) { App.pinnedTabs.delete(p); App.pinnedTabs.add(np); }
+      if (App.favorites.has(p)) { App.favorites.delete(p); App.favorites.add(np); }
+    }
+  }
+  renderTabs();
+  renderFileTree();
+  saveSession();
+}
+
+function duplicateFile(path) {
+  const f = App.files[path];
+  if (!f || f.isFolder) return;
+  const dir = getDirname(path);
+  const ext = f.name.includes('.') ? '.' + f.name.split('.').pop() : '';
+  const base = f.name.replace(/(\.[^.]+)$/, '') || f.name;
+  const newName = base + '_copy' + ext;
+  const newPath = normPath(dir ? `${dir}/${newName}` : newName);
+  addFile(newPath, newName, f.content, f.type);
+  renderFileTree();
+  saveSession();
+  toast(`Duplicated as ${newName}`, 'success', 2000);
+}
+
+function addRecentFile(path) {
+  App.recentFiles = [path, ...App.recentFiles.filter(p => p !== path)].slice(0, 10);
+}
+
+function updateFileCountLabel() {
+  const files = Object.values(App.files).filter(f => !f.isFolder);
+  const count = files.length;
+  $('file-count-label').textContent = `${count} file${count !== 1 ? 's' : ''}`;
+  const totalBytes = files.reduce((acc, f) => {
+    if (typeof f.content === 'string') return acc + f.content.length;
+    if (f.content instanceof ArrayBuffer) return acc + f.content.byteLength;
+    return acc;
+  }, 0);
+  const sz = $('total-size-label');
+  if (sz) sz.textContent = totalBytes > 0 ? formatBytes(totalBytes) : '';
+}
+
+/* ============================================================
+   FILE SEARCH
+============================================================ */
+function setupFileSearch() {
+  const input = $('file-search-input');
+  if (!input) return;
+  let searchTimer;
+  input.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      App.fileSearchQuery = input.value.trim().toLowerCase();
+      renderFileTree();
+    }, 150);
+  });
+}
+
+/* ============================================================
+   FILE TREE RENDER (virtualized for large lists)
+============================================================ */
+function renderFileTree() {
+  const tree = $('file-tree');
+  const hasFiles = Object.keys(App.files).length > 0;
+  $('drop-zone').style.display = hasFiles ? 'none' : 'block';
+  updateFileCountLabel();
+
+  if (!hasFiles) { tree.innerHTML = ''; return; }
+
+  const roots = buildTreeStructure();
+  tree.innerHTML = '';
+
+  // If search query, flatten and filter
+  if (App.fileSearchQuery) {
+    const allFiles = [];
+    function collectFiles(nodes) {
+      nodes.forEach(n => {
+        if (!n.isFolder && n.name.toLowerCase().includes(App.fileSearchQuery)) allFiles.push(n);
+        if (n.children) collectFiles(n.children);
+      });
+    }
+    collectFiles(roots);
+    allFiles.forEach(node => {
+      const item = createTreeItem(node, 0);
+      tree.appendChild(item);
+    });
+    return;
+  }
+
+  renderTreeNodes(roots, tree, 0);
+}
+
+function buildTreeStructure() {
+  const all = Object.keys(App.files).sort();
+  const added = new Set();
+
+  function buildLevel(parentPath) {
+    return all
+      .filter(p => getDirname(p) === parentPath && !added.has(p))
+      .map(p => {
+        added.add(p);
+        const f = App.files[p];
+        return { ...f, children: f.isFolder ? buildLevel(p) : [] };
+      });
+  }
+
+  return buildLevel('');
+}
+
+function createTreeItem(node, depth) {
+  const item = document.createElement('div');
+  item.className = 'tree-item' + (node.isFolder ? ' folder' : '') + (node.path === App.activeTab ? ' active' : '') + (App.favorites.has(node.path) ? ' favorited' : '');
+  item.dataset.path = node.path;
+  item.style.paddingLeft = `${8 + depth * 14}px`;
+  item.draggable = true;
+
+  if (node.isFolder) {
+    const arrow = document.createElement('span');
+    arrow.className = 'tree-folder-arrow';
+    arrow.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:9px;height:9px"><polyline points="9 18 15 12 9 6"/></svg>`;
+    const stored = localStorage.getItem(`htp_folder_${node.path}`);
+    const isOpen = stored !== 'closed';
+    if (isOpen) arrow.classList.add('open');
+    const icon = document.createElement('span');
+    icon.innerHTML = getFileIconSVG(node.name, true);
+    const label = document.createElement('span');
+    label.className = 'tree-label';
+    label.textContent = node.name;
+    item.appendChild(arrow);
+    item.appendChild(icon);
+    item.appendChild(label);
+    return item;
+  } else {
+    const icon = document.createElement('span');
+    icon.innerHTML = getFileIconSVG(node.name);
+    const label = document.createElement('span');
+    label.className = 'tree-label';
+    label.textContent = node.name;
+    const fav = document.createElement('span');
+    fav.className = 'tree-fav';
+    fav.textContent = '★';
+    fav.title = 'Favorite';
+    item.appendChild(icon);
+    item.appendChild(label);
+    item.appendChild(fav);
+    return item;
+  }
+}
+
+function renderTreeNodes(nodes, container, depth) {
+  nodes.sort((a, b) => {
+    if (a.isFolder && !b.isFolder) return -1;
+    if (!a.isFolder && b.isFolder) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  nodes.forEach(node => {
+    const item = createTreeItem(node, depth);
+
+    if (node.isFolder) {
+      const arrow = item.querySelector('.tree-folder-arrow');
+      const childContainer = document.createElement('div');
+      childContainer.className = 'tree-children';
+      const stored = localStorage.getItem(`htp_folder_${node.path}`);
+      const isOpen = stored !== 'closed';
+      if (!isOpen) {
+        childContainer.classList.add('collapsed');
+        childContainer.style.maxHeight = '0';
+      } else {
+        childContainer.style.maxHeight = '9999px';
+      }
+
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const open = arrow.classList.toggle('open');
+        if (open) {
+          childContainer.classList.remove('collapsed');
+          childContainer.style.maxHeight = '9999px';
+          localStorage.setItem(`htp_folder_${node.path}`, 'open');
+        } else {
+          childContainer.style.maxHeight = '0';
+          setTimeout(() => childContainer.classList.add('collapsed'), 150);
+          localStorage.setItem(`htp_folder_${node.path}`, 'closed');
+        }
+      });
+
+      // Drag-over folder
+      item.addEventListener('dragover', (e) => { e.preventDefault(); item.classList.add('drag-over-folder'); });
+      item.addEventListener('dragleave', () => item.classList.remove('drag-over-folder'));
+      item.addEventListener('drop', (e) => {
+        e.preventDefault();
+        item.classList.remove('drag-over-folder');
+        const srcPath = e.dataTransfer.getData('text/plain');
+        if (srcPath && srcPath !== node.path) moveFileToFolder(srcPath, node.path);
+      });
+
+      container.appendChild(item);
+      container.appendChild(childContainer);
+      if (node.children.length > 0) renderTreeNodes(node.children, childContainer, depth + 1);
+    } else {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Favorite toggle on star click
+        const rect = item.getBoundingClientRect();
+        const fav = item.querySelector('.tree-fav');
+        if (fav && e.clientX > rect.right - 24) {
+          toggleFavorite(node.path);
+          return;
+        }
+        openFile(node.path);
+        if (App.isMobile) setWorkspaceView('editor');
+      });
+
+      // Drag source
+      item.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', node.path);
+        e.dataTransfer.effectAllowed = 'move';
+      });
+    }
+
+    // Context menu
+    item.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      showContextMenu(e.clientX, e.clientY, node.path);
+    });
+    let longPressTimer;
+    item.addEventListener('touchstart', () => {
+      longPressTimer = setTimeout(() => showContextMenu(item.getBoundingClientRect().right, item.getBoundingClientRect().top, node.path), 600);
+    }, { passive: true });
+    item.addEventListener('touchend', () => clearTimeout(longPressTimer), { passive: true });
+    item.addEventListener('touchmove', () => clearTimeout(longPressTimer), { passive: true });
+  });
+}
+
+function moveFileToFolder(srcPath, destFolder) {
+  const f = App.files[srcPath];
+  if (!f) return;
+  const newPath = normPath(`${destFolder}/${getBasename(srcPath)}`);
+  if (newPath === srcPath || App.files[newPath]) { toast('Cannot move here', 'error'); return; }
+  renameFile(srcPath, getBasename(srcPath));
+  // Re-do rename with new parent
+  const oldDir = getDirname(srcPath);
+  const newName = getBasename(srcPath);
+  const fp = App.files[srcPath];
+  if (fp) {
+    App.files[newPath] = { ...fp, path: newPath };
+    delete App.files[srcPath];
+    const ti = App.openTabs.indexOf(srcPath);
+    if (ti !== -1) App.openTabs[ti] = newPath;
+    if (App.activeTab === srcPath) App.activeTab = newPath;
+    if (App.monacoModels[srcPath]) { App.monacoModels[newPath] = App.monacoModels[srcPath]; delete App.monacoModels[srcPath]; }
+  }
+  renderTabs();
+  renderFileTree();
+  saveSession();
+  toast(`Moved to ${getBasename(destFolder)}`, 'success', 1500);
+}
+
+function toggleFavorite(path) {
+  if (App.favorites.has(path)) { App.favorites.delete(path); toast('Removed from favorites', 'info', 1500); }
+  else { App.favorites.add(path); toast('Added to favorites ★', 'success', 1500); }
+  saveFavorites();
+  renderFileTree();
+}
+
+/* ============================================================
+   TABS
+============================================================ */
+function openFile(path) {
+  if (!App.files[path] || App.files[path].isFolder) return;
+  if (!App.openTabs.includes(path)) App.openTabs.push(path);
+  addRecentFile(path);
+  activateTab(path);
+}
+
+function activateTab(path, silent=false) {
+  // Save current editor state before switching
+  if (App.activeTab && App.monacoEditor && App.monacoReady) {
+    App.monacoViewStates[App.activeTab] = App.monacoEditor.saveViewState();
+    // Sync content
+    const f = App.files[App.activeTab];
+    if (f && !f.isFolder) {
+      const m = App.monacoModels[App.activeTab];
+      if (m) f.content = m.getValue();
+    }
+  }
+
+  App.activeTab = path;
+  renderTabs();
+  setEditorContent(path);
+
+  qsa('.tree-item').forEach(el => el.classList.toggle('active', el.dataset.path === path));
+  if (!silent) saveSession();
+}
+
+function closeTab(path) {
+  if (App.pinnedTabs.has(path)) { toast('Unpin the tab first', 'info', 1500); return; }
+  const idx = App.openTabs.indexOf(path);
+  if (idx === -1) return;
+  App.openTabs.splice(idx, 1);
+  if (App.activeTab === path) {
+    App.activeTab = App.openTabs[Math.min(idx, App.openTabs.length-1)] || null;
+  }
+  renderTabs();
+  if (App.activeTab) activateTab(App.activeTab, true);
+  else showEditorEmptyState(true);
+  saveSession();
+}
+
+function closeAllTabs() {
+  App.openTabs = App.openTabs.filter(p => App.pinnedTabs.has(p));
+  App.activeTab = App.openTabs[0] || null;
+  renderTabs();
+  if (App.activeTab) activateTab(App.activeTab, true);
+  else showEditorEmptyState(true);
+  saveSession();
+}
+
+function pinTab(path) {
+  if (App.pinnedTabs.has(path)) App.pinnedTabs.delete(path);
+  else App.pinnedTabs.add(path);
+  renderTabs();
+  saveSession();
+}
+
+function renderTabs() {
+  const bar = $('tab-bar');
+  bar.innerHTML = '';
+
+  // Pinned first
+  const sortedTabs = [...App.openTabs].sort((a, b) => {
+    const ap = App.pinnedTabs.has(a), bp = App.pinnedTabs.has(b);
+    if (ap && !bp) return -1;
+    if (!ap && bp) return 1;
+    return 0;
+  });
+
+  sortedTabs.forEach(path => {
+    const f = App.files[path];
+    if (!f) return;
+    const tab = document.createElement('button');
+    const isPinned = App.pinnedTabs.has(path);
+    tab.className = 'file-tab' + (path === App.activeTab ? ' active' : '') + (isPinned ? ' pinned' : '');
+    tab.dataset.path = path;
+    tab.title = path;
+
+    // Drag reorder
+    tab.draggable = true;
+    tab.addEventListener('dragstart', e => { e.dataTransfer.setData('tab-path', path); e.dataTransfer.effectAllowed = 'move'; });
+    tab.addEventListener('dragover', e => { e.preventDefault(); tab.style.outline = '1px solid var(--accent)'; });
+    tab.addEventListener('dragleave', () => { tab.style.outline = ''; });
+    tab.addEventListener('drop', e => {
+      e.preventDefault();
+      tab.style.outline = '';
+      const srcPath = e.dataTransfer.getData('tab-path');
+      if (srcPath && srcPath !== path) {
+        const si = App.openTabs.indexOf(srcPath), di = App.openTabs.indexOf(path);
+        if (si !== -1 && di !== -1) {
+          App.openTabs.splice(si, 1);
+          App.openTabs.splice(di, 0, srcPath);
+          renderTabs();
+          saveSession();
+        }
+      }
+    });
+
+    const icon = document.createElement('span');
+    icon.innerHTML = getFileIconSVG(f.name);
+    icon.style.cssText = 'width:13px;height:13px;flex-shrink:0;display:flex';
+
+    const name = document.createElement('span');
+    name.className = 'tab-name';
+    name.textContent = f.name;
+
+    const close = document.createElement('button');
+    close.className = 'tab-close';
+    close.innerHTML = '×';
+    close.title = isPinned ? 'Pinned' : 'Close';
+    close.addEventListener('click', e => { e.stopPropagation(); closeTab(path); });
+
+    tab.appendChild(icon);
+    tab.appendChild(name);
+    tab.appendChild(close);
+    tab.addEventListener('click', () => activateTab(path));
+    tab.addEventListener('auxclick', e => { if (e.button === 1) { e.preventDefault(); closeTab(path); }});
+    tab.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      showTabContextMenu(e.clientX, e.clientY, path);
+    });
+    bar.appendChild(tab);
+  });
+
+  // Scroll active tab into view
+  const activeEl = bar.querySelector('.active');
+  if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+}
+
+function showTabContextMenu(x, y, path) {
+  // Reuse context menu for tabs
+  App.ctxTarget = path;
+  const menu = $('context-menu');
+  menu.classList.remove('hidden');
+  menu.querySelector('[data-action="open"]').style.display = 'none';
+  menu.querySelector('[data-action="duplicate"]').style.display = 'block';
+  const mw = 160, mh = 180;
+  menu.style.left = Math.min(x, window.innerWidth - mw - 4) + 'px';
+  menu.style.top = Math.min(y, window.innerHeight - mh - 4) + 'px';
+}
+
+function markTabModified(path, modified) {
+  const tab = $('tab-bar').querySelector(`[data-path="${CSS.escape(path)}"]`);
+  if (tab) tab.classList.toggle('modified', modified);
+  const modEl = $('status-modified');
+  if (modEl) modEl.textContent = modified ? '● Modified' : '';
+}
+
+function showEditorEmptyState(show) {
+  $('editor-empty-state').style.display = show ? 'flex' : 'none';
+  $('monaco-container').style.display = show ? 'none' : 'block';
+  $('mobile-textarea').style.display = 'none';
+}
+
+function setupTabScrolling() {
+  const bar = $('tab-bar');
+  const left = $('tab-scroll-left');
+  const right = $('tab-scroll-right');
+  if (left) left.addEventListener('click', () => { bar.scrollBy({ left: -120, behavior: 'smooth' }); });
+  if (right) right.addEventListener('click', () => { bar.scrollBy({ left: 120, behavior: 'smooth' }); });
+}
+
+/* ============================================================
+   PREVIEW ENGINE
+============================================================ */
+function revokeBlobUrl(path) {
+  if (App.previewBlobUrls[path]) {
+    URL.revokeObjectURL(App.previewBlobUrls[path]);
+    delete App.previewBlobUrls[path];
+  }
+}
+function revokeAllBlobUrls() {
+  Object.values(App.previewBlobUrls).forEach(u => URL.revokeObjectURL(u));
+  App.previewBlobUrls = {};
+}
+function getMimeType(name) {
+  const ext = (name.split('.').pop()||'').toLowerCase();
+  const map = {
+    html:'text/html', htm:'text/html', css:'text/css', js:'application/javascript',
+    json:'application/json', png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg',
+    gif:'image/gif', webp:'image/webp', svg:'image/svg+xml', ico:'image/x-icon',
+    bmp:'image/bmp', woff:'font/woff', woff2:'font/woff2', ttf:'font/ttf',
+    eot:'application/vnd.ms-fontobject', otf:'font/otf', txt:'text/plain',
+    md:'text/markdown', mp4:'video/mp4', mp3:'audio/mpeg', ogg:'audio/ogg', wav:'audio/wav',
+  };
+  return map[ext] || 'application/octet-stream';
+}
+
+function buildBlobUrls() {
+  revokeAllBlobUrls();
+  for (const [path, f] of Object.entries(App.files)) {
+    if (f.isFolder) continue;
+    try {
+      const mime = getMimeType(f.name);
+      let blob;
+      if (f.content instanceof ArrayBuffer) blob = new Blob([f.content], { type: mime });
+      else if (typeof f.content === 'string') blob = new Blob([f.content], { type: mime });
+      else continue;
+      App.previewBlobUrls[path] = URL.createObjectURL(blob);
+    } catch(e) {}
+  }
+}
+
+function findEntryFile() {
+  const htmlFiles = Object.keys(App.files).filter(p => /\.html?$/i.test(p) && !App.files[p].isFolder);
+  if (!htmlFiles.length) return null;
+  const indexFile = htmlFiles.find(p => /\/index\.html?$/i.test(p) || /^index\.html?$/i.test(p));
+  return indexFile || htmlFiles[0];
+}
+
+function runPreview() {
+  // Always run — never block on errors
+  try {
+    // Sync current editor content first
+    if (App.activeTab && App.monacoReady && App.monacoEditor) {
+      const f = App.files[App.activeTab];
+      const m = App.monacoModels[App.activeTab];
+      if (f && m) f.content = m.getValue();
+    }
+
+    const entryPath = findEntryFile();
+    if (!entryPath) {
+      $('preview-empty').classList.remove('hidden');
+      return;
+    }
+
+    buildBlobUrls();
+    const f = App.files[entryPath];
+    let html = typeof f.content === 'string' ? f.content : '';
+    html = rewriteAssetPaths(html, entryPath);
+    html = injectConsoleCaptureScript(html);
+
+    const previewBlob = new Blob([html], { type: 'text/html' });
+    const previewUrl = URL.createObjectURL(previewBlob);
+
+    const iframe = $('preview-iframe');
+    iframe.src = previewUrl;
+    $('preview-empty').classList.add('hidden');
+
+    setTimeout(() => URL.revokeObjectURL(previewUrl), 8000);
+
+    // Fullscreen sync
+    const fsOverlay = $('fullscreen-overlay');
+    if (!fsOverlay.classList.contains('hidden')) {
+      $('fullscreen-iframe').src = previewUrl;
+    }
+  } catch(e) {
+    // Preview must never crash the app
+    console.error('Preview error (non-fatal):', e);
+    $('preview-empty').classList.remove('hidden');
+  }
+}
+
+function rewriteAssetPaths(html, htmlPath) {
+  const htmlDir = getDirname(htmlPath);
+
+  // src/href attributes
+  html = html.replace(/(src|href)=["']([^"'#?]{1,500})["']/gi, (match, attr, val) => {
+    if (/^(https?:|\/\/|data:|blob:)/.test(val)) return match;
+    const resolved = resolveRelativePath(htmlDir, val);
+    const blobUrl = App.previewBlobUrls[resolved];
+    return blobUrl ? `${attr}="${blobUrl}"` : match;
+  });
+
+  // CSS url()
+  html = html.replace(/url\(["']?([^"')#?\s]{1,500})["']?\)/gi, (match, val) => {
+    if (/^(https?:|\/\/|data:|blob:)/.test(val)) return match;
+    const resolved = resolveRelativePath(htmlDir, val);
+    const blobUrl = App.previewBlobUrls[resolved];
+    return blobUrl ? `url("${blobUrl}")` : match;
+  });
+
+  // Inline CSS <link>
+  html = html.replace(/<link([^>]{0,500})rel=["']stylesheet["'][^>]{0,200}>/gi, (match, attrs) => {
+    const hrefMatch = attrs.match(/href=["']([^"']+)["']/i);
+    if (!hrefMatch) return match;
+    const href = hrefMatch[1];
+    if (/^(https?:|\/\/)/.test(href)) return match;
+    const resolved = resolveRelativePath(htmlDir, href);
+    const cssFile = App.files[resolved];
+    if (cssFile && typeof cssFile.content === 'string') {
+      const cssDir = getDirname(resolved);
+      let css = cssFile.content.replace(/url\(["']?([^"')#?\s]{1,500})["']?\)/gi, (m, v) => {
+        if (/^(https?:|\/\/|data:|blob:)/.test(v)) return m;
+        const r = resolveRelativePath(cssDir, v);
+        const b = App.previewBlobUrls[r];
+        return b ? `url("${b}")` : m;
+      });
+      return `<style data-source="${href}">${css}</style>`;
+    }
+    return match;
+  });
+
+  // Inline JS <script src>
+  html = html.replace(/<script([^>]{0,200})src=["']([^"']{1,500})["']([^>]{0,100})><\/script>/gi, (match, before, src, after) => {
+    if (/^(https?:|\/\/)/.test(src)) return match;
+    const resolved = resolveRelativePath(htmlDir, src);
+    const jsFile = App.files[resolved];
+    if (jsFile && typeof jsFile.content === 'string') {
+      return `<script${before}${after}>${jsFile.content}<\/script>`;
+    }
+    return match;
+  });
+
+  return html;
+}
+
+function resolveRelativePath(base, relative) {
+  if (!relative) return '';
+  relative = relative.split('?')[0].split('#')[0];
+  if (!base) return normPath(relative);
+  const parts = base.split('/');
+  for (const part of relative.split('/')) {
+    if (part === '..') parts.pop();
+    else if (part !== '.') parts.push(part);
+  }
+  return normPath(parts.join('/'));
+}
+
+function injectConsoleCaptureScript(html) {
+  const script = `<script>(function(){var _s=function(t,a){try{var m=Array.from(a).map(function(x){try{return typeof x==='object'?JSON.stringify(x,null,2):String(x);}catch(e){return String(x);}}).join(' ');window.parent.postMessage({type:'htp_console',level:t,message:m},'*');}catch(e){}};['log','info','warn','error','debug'].forEach(function(m){var o=console[m].bind(console);console[m]=function(){o.apply(console,arguments);_s(m,arguments);};});window.addEventListener('error',function(e){window.parent.postMessage({type:'htp_console',level:'error',message:(e.message||'Error')+(e.filename?' ('+e.filename.split('/').pop()+':'+e.lineno+')':'')},'*');});window.addEventListener('unhandledrejection',function(e){window.parent.postMessage({type:'htp_console',level:'error',message:'Unhandled rejection: '+(e.reason&&e.reason.message?e.reason.message:String(e.reason||'Unknown'))},'*');});})();<\/script>`;
+  if (/<\/head>/i.test(html)) return html.replace(/<\/head>/i, script + '</head>');
+  if (/<body/i.test(html)) return html.replace(/<body/i, script + '<body');
+  return script + html;
+}
+
+function initConsoleCapture() {
+  window.addEventListener('message', (e) => {
+    if (!e.data || e.data.type !== 'htp_console') return;
+    addConsoleEntry(e.data.level, e.data.message);
+  });
+}
+
+function addConsoleEntry(level, message) {
+  const entry = { level, message, time: new Date().toLocaleTimeString() };
+  App.consoleLogs.push(entry);
+  if (level === 'error') { App.errorCount++; updateConsoleBadge(); }
+  if (level === 'warn') { App.warnCount++; updateConsoleBadge(); }
+  renderConsoleEntry(entry);
+}
+
+function updateConsoleBadge() {
+  const eb = $('error-badge'), wb = $('warn-badge');
+  if (eb) { eb.textContent = App.errorCount; eb.classList.toggle('hidden', App.errorCount === 0); }
+  if (wb) { wb.textContent = App.warnCount; wb.classList.toggle('hidden', App.warnCount === 0); }
+}
+
+function renderConsoleEntry(entry) {
+  const out = $('console-output');
+  const div = document.createElement('div');
+  div.className = `console-entry console-${entry.level}`;
+  const icons = {
+    error: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="entry-type"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
+    warn:  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="entry-type"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+    log:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="entry-type"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`,
+    info:  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="entry-type"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+  };
+  div.innerHTML = (icons[entry.level] || icons.log) + `<span style="color:var(--text-muted);margin-right:4px;font-size:10px">${entry.time}</span><span>${escapeHtml(entry.message)}</span>`;
+  out.appendChild(div);
+  // Only scroll if near bottom
+  if (out.scrollHeight - out.scrollTop < out.clientHeight + 80) out.scrollTop = out.scrollHeight;
+}
+
+function clearConsole() {
+  App.consoleLogs = [];
+  App.errorCount = 0;
+  App.warnCount = 0;
+  $('console-output').innerHTML = '';
+  updateConsoleBadge();
+}
+
+function filterConsole(tab) {
+  const entries = qsa('.console-entry', $('console-output'));
+  entries.forEach(e => {
+    if (tab === 'console') e.style.display = '';
+    else if (tab === 'errors') e.style.display = e.classList.contains('console-error') ? '' : 'none';
+    else if (tab === 'warnings') e.style.display = e.classList.contains('console-warn') ? '' : 'none';
+  });
+}
+
+/* ============================================================
+   ZIP IMPORT / EXPORT
+============================================================ */
+async function importZip(file) {
+  if (!window.JSZip) { toast('JSZip not loaded', 'error'); return; }
+  toast('Importing ZIP…', 'info');
+  try {
+    const zip = await JSZip.loadAsync(file, { checkCRC32: false }).catch(e => { throw new Error('Invalid or corrupted ZIP: ' + e.message); });
+    const projectName = file.name.replace(/\.zip$/i, '');
+    App.settings.projectName = projectName;
+    const pn = $('project-name-display');
+    if (pn) pn.textContent = projectName;
+
+    const promises = [];
+    const seenPaths = new Set();
+
+    zip.forEach((relPath, zipEntry) => {
+      if (relPath.includes('__MACOSX') || relPath.includes('.DS_Store')) return;
+      if (zipEntry.dir) { addFolder(normPath(relPath)); return; }
+
+      let p = normPath(relPath);
+      // Handle duplicates
+      if (seenPaths.has(p)) {
+        const ext = p.includes('.') ? '.' + p.split('.').pop() : '';
+        const base = p.slice(0, p.length - ext.length);
+        p = base + '_dup' + ext;
+      }
+      seenPaths.add(p);
+
+      const name = getBasename(p);
+      if (isBinaryType(name)) {
+        promises.push(zipEntry.async('arraybuffer').then(buf => addFile(p, name, buf, 'binary')).catch(() => {}));
+      } else {
+        promises.push(zipEntry.async('string').then(content => addFile(p, name, content, 'text')).catch(() => {}));
+      }
+    });
+
+    await Promise.all(promises);
+    renderFileTree();
+    saveSession();
+    const entry = findEntryFile();
+    if (entry) { openFile(entry); runPreview(); }
+    toast(`Imported ${promises.length} files from ${file.name}`, 'success');
+  } catch(e) {
+    toast('ZIP import error: ' + e.message, 'error');
+    console.error(e);
+  }
+}
+
+async function exportZip() {
+  // Export ALWAYS works regardless of errors
+  $('modal-export').classList.remove('hidden');
+}
+
+async function doExportZip() {
+  if (!window.JSZip) { toast('JSZip not loaded', 'error'); return; }
+  try {
+    const zip = new JSZip();
+    const files = Object.values(App.files).filter(f => !f.isFolder);
+    for (const f of files) {
+      try {
+        if (f.content instanceof ArrayBuffer) zip.file(f.path, f.content);
+        else if (typeof f.content === 'string') zip.file(f.path, f.content);
+      } catch(e) {}
+    }
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+    downloadBlob(blob, (App.settings.projectName || 'project') + '.zip');
+    toast(`Exported ${files.length} files`, 'success');
+  } catch(e) {
+    toast('Export error: ' + e.message, 'error');
+  }
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
+
+function exportSingleHTML() {
+  try {
+    const entryPath = findEntryFile();
+    if (!entryPath) { toast('No HTML file found', 'error'); return; }
+    // Sync editor content
+    if (App.monacoReady && App.monacoEditor && App.activeTab) {
+      const m = App.monacoModels[App.activeTab];
+      if (m && App.files[App.activeTab]) App.files[App.activeTab].content = m.getValue();
+    }
+    buildBlobUrls();
+    const f = App.files[entryPath];
+    let html = typeof f.content === 'string' ? f.content : '';
+    html = rewriteAssetPaths(html, entryPath);
+    const blob = new Blob([html], { type: 'text/html' });
+    downloadBlob(blob, (App.settings.projectName || 'project') + '.html');
+    toast('Exported single HTML', 'success');
+  } catch(e) {
+    toast('Export error: ' + e.message, 'error');
+  }
+}
+
+function exportEachFile() {
+  const files = Object.values(App.files).filter(f => !f.isFolder && typeof f.content === 'string');
+  files.forEach((f, i) => {
+    setTimeout(() => {
+      const blob = new Blob([f.content], { type: getMimeType(f.name) });
+      downloadBlob(blob, f.name);
+    }, i * 150);
+  });
+  toast(`Downloading ${files.length} files`, 'success');
+}
+
+/* ============================================================
+   FILE UPLOAD HANDLERS
+============================================================ */
+async function handleFileUpload(fileList) {
+  const files = Array.from(fileList);
+  if (!files.length) return;
+  if (files.length === 1 && files[0].name.toLowerCase().endsWith('.zip')) {
+    await importZip(files[0]);
+    return;
+  }
+
+  let count = 0;
+  // Process in chunks to avoid blocking UI
+  for (let i = 0; i < files.length; i += 5) {
+    const chunk = files.slice(i, i + 5);
+    await Promise.all(chunk.map(async file => {
+      try {
+        const path = normPath(file.webkitRelativePath || file.name);
+        const name = getBasename(path);
+        if (isBinaryType(name)) {
+          const buf = await file.arrayBuffer();
+          addFile(path, name, buf, 'binary');
+        } else {
+          const text = await file.text();
+          addFile(path, name, text, 'text');
+        }
+        count++;
+      } catch(e) {}
+    }));
+  }
+
+  renderFileTree();
+  saveSession();
+  updateFileCountLabel();
+  if (!App.activeTab) {
+    const htmlFile = Object.keys(App.files).find(p => /\.html?$/i.test(p));
+    if (htmlFile) { openFile(htmlFile); runPreview(); }
+  } else if (App.settings.autoRefresh) runPreview();
+  toast(`Added ${count} file${count !== 1 ? 's' : ''}`, 'success');
+}
+
+/* ============================================================
+   SETUP: DROP ZONE
+============================================================ */
+function setupDropZone() {
+  const sidebar = $('sidebar');
+  const dz = $('drop-zone');
+
+  ['dragenter','dragover'].forEach(evt => {
+    sidebar.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); dz.classList.add('drag-over'); });
+  });
+  ['dragleave','drop'].forEach(evt => {
+    sidebar.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); dz.classList.remove('drag-over'); });
+  });
+  sidebar.addEventListener('drop', (e) => {
+    const items = e.dataTransfer?.items || [];
+    const files = e.dataTransfer?.files || [];
+    if (items.length > 0) {
+      const entries = [];
+      for (let i = 0; i < items.length; i++) {
+        const entry = items[i].webkitGetAsEntry?.();
+        if (entry) entries.push(entry);
+      }
+      if (entries.length) { processEntries(entries, ''); return; }
+    }
+    handleFileUpload(files);
+  });
+
+  document.addEventListener('dragover', e => e.preventDefault());
+  document.addEventListener('drop', (e) => {
+    e.preventDefault();
+    // Don't handle if it's a tab reorder
+    if (e.dataTransfer?.types.includes('tab-path')) return;
+    if (e.dataTransfer?.files?.length) handleFileUpload(e.dataTransfer.files);
+  });
+
+  dz.addEventListener('click', () => $('file-input-upload').click());
+}
+
+async function processEntries(entries, basePath) {
+  for (const entry of entries) {
+    if (entry.isFile) {
+      await new Promise(res => {
+        entry.file(file => {
+          const path = normPath(basePath ? `${basePath}/${entry.name}` : entry.name);
+          const name = entry.name;
+          if (isBinaryType(name)) {
+            file.arrayBuffer().then(buf => { addFile(path, name, buf, 'binary'); res(); }).catch(res);
+          } else {
+            file.text().then(text => { addFile(path, name, text, 'text'); res(); }).catch(res);
+          }
+        }, res);
+      });
+    } else if (entry.isDirectory) {
+      const dirPath = normPath(basePath ? `${basePath}/${entry.name}` : entry.name);
+      addFolder(dirPath);
+      await new Promise(res => {
+        const reader = entry.createReader();
+        const readAll = (acc) => {
+          reader.readEntries(async batch => {
+            if (!batch.length) {
+              await processEntries(acc, dirPath);
+              res();
+            } else {
+              readAll([...acc, ...batch]);
+            }
+          }, res);
+        };
+        readAll([]);
+      });
+    }
+  }
+  renderFileTree();
+  saveSession();
+  updateFileCountLabel();
+  toast('Files imported', 'success');
+  if (!App.activeTab) {
+    const htmlFile = Object.keys(App.files).find(p => /\.html?$/i.test(p));
+    if (htmlFile) { openFile(htmlFile); runPreview(); }
+  }
+}
+
+/* ============================================================
+   SETUP: FILE INPUTS
+============================================================ */
+function setupFileInputs() {
+  const fileInput = $('file-input-upload');
+  fileInput.addEventListener('change', () => { handleFileUpload(fileInput.files); fileInput.value = ''; });
+  const zipInput = $('file-input-zip');
+  zipInput.addEventListener('change', () => { if (zipInput.files[0]) importZip(zipInput.files[0]); zipInput.value = ''; });
+  $('btn-drop-upload').addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
+}
+
+/* ============================================================
+   SETUP: BUTTONS
+============================================================ */
+function setupButtons() {
+  $('sidebar-toggle').addEventListener('click', toggleSidebar);
+  $('btn-run').addEventListener('click', () => { clearConsole(); runPreview(); if (App.isMobile) setWorkspaceView('preview'); });
+  $('btn-import-zip').addEventListener('click', () => $('file-input-zip').click());
+  $('btn-export-zip').addEventListener('click', exportZip);
+  $('btn-settings').addEventListener('click', openSettings);
+  $('btn-new-file').addEventListener('click', () => openNewFileModal());
+  $('btn-new-file-sidebar').addEventListener('click', () => openNewFileModal());
+  $('btn-new-folder').addEventListener('click', () => openNewFolderModal());
+  $('btn-upload-files').addEventListener('click', () => $('file-input-upload').click());
+  $('btn-collapse-all').addEventListener('click', collapseAllFolders);
+
+  $('btn-refresh-preview').addEventListener('click', () => { clearConsole(); runPreview(); });
+  $('btn-fullscreen-preview').addEventListener('click', openFullscreenPreview);
+  $('btn-newtab-preview').addEventListener('click', openPreviewInNewTab);
+  $('btn-fullscreen-newtab').addEventListener('click', openPreviewInNewTab);
+
+  $('btn-search').addEventListener('click', () => { if (App.monacoEditor) App.monacoEditor.getAction('actions.find')?.run(); });
+  $('btn-format').addEventListener('click', () => { if (App.monacoEditor) App.monacoEditor.getAction('editor.action.formatDocument')?.run(); });
+  $('btn-word-wrap').addEventListener('click', toggleWordWrap);
+  $('btn-minimap').addEventListener('click', toggleMinimap);
+
+  $('btn-clear-console').addEventListener('click', clearConsole);
+  $('btn-toggle-console').addEventListener('click', toggleConsole);
+
+  qsa('.console-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      qsa('.console-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      filterConsole(btn.dataset.tab);
+    });
+  });
+
+  // Toolbar buttons
+  $('btn-tb-selectall').addEventListener('click', () => { if (App.monacoEditor) App.monacoEditor.trigger('keyboard', 'editor.action.selectAll', null); });
+  $('btn-tb-copy').addEventListener('click', () => { if (App.monacoEditor) App.monacoEditor.trigger('keyboard', 'editor.action.clipboardCopyAction', null); });
+  $('btn-tb-cut').addEventListener('click', () => { if (App.monacoEditor) App.monacoEditor.trigger('keyboard', 'editor.action.clipboardCutAction', null); });
+  $('btn-tb-paste').addEventListener('click', async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (App.monacoEditor) {
+        App.monacoEditor.trigger('keyboard', 'type', { text });
+      }
+    } catch(e) {}
+  });
+  $('btn-tb-undo').addEventListener('click', () => { if (App.monacoEditor) App.monacoEditor.trigger('keyboard', 'undo', null); });
+  $('btn-tb-redo').addEventListener('click', () => { if (App.monacoEditor) App.monacoEditor.trigger('keyboard', 'redo', null); });
+  $('btn-tb-clear').addEventListener('click', () => $('modal-clear').classList.remove('hidden'));
+  $('btn-tb-comment').addEventListener('click', () => { if (App.monacoEditor) App.monacoEditor.trigger('keyboard', 'editor.action.commentLine', null); });
+
+  $('btn-create-file-confirm').addEventListener('click', createNewFile);
+  $('btn-create-folder-confirm').addEventListener('click', createNewFolder);
+  $('btn-rename-confirm').addEventListener('click', confirmRename);
+  $('btn-save-settings').addEventListener('click', applyAndSaveSettings);
+  $('btn-clear-confirm').addEventListener('click', () => {
+    if (App.monacoEditor) App.monacoEditor.setValue('');
+    $('modal-clear').classList.add('hidden');
+  });
+  $('btn-empty-new').addEventListener('click', () => openNewFileModal());
+  $('btn-empty-upload').addEventListener('click', () => $('file-input-upload').click());
+  $('btn-exit-fullscreen').addEventListener('click', () => $('fullscreen-overlay').classList.add('hidden'));
+
+  // Export modal buttons
+  $('btn-export-html-only').addEventListener('click', () => { exportSingleHTML(); $('modal-export').classList.add('hidden'); });
+  $('btn-export-zip-jszip').addEventListener('click', () => { doExportZip(); $('modal-export').classList.add('hidden'); });
+  $('btn-export-each').addEventListener('click', () => { exportEachFile(); $('modal-export').classList.add('hidden'); });
+
+  // Quick template buttons in new file modal
+  qsa('[data-template]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const ext = btn.dataset.template;
+      const input = $('input-new-filename');
+      if (!input.value || !input.value.includes('.')) {
+        input.value = (input.value || 'untitled') + '.' + ext;
+      }
+    });
+  });
+
+  // Modal closes
+  qsa('.modal-close, .modal-cancel').forEach(btn => {
+    btn.addEventListener('click', () => btn.closest('.modal-overlay')?.classList.add('hidden'));
+  });
+  qsa('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.add('hidden'); });
+  });
+
+  // Enter key in modal inputs
+  [$('input-new-filename'), $('input-new-foldername'), $('input-rename')].forEach(input => {
+    if (!input) return;
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') input.closest('.modal-overlay').querySelector('.action-btn:not(.secondary):not(.modal-cancel)')?.click();
+    });
+  });
+
+  const fs = $('setting-fontsize');
+  if (fs) fs.addEventListener('input', () => { $('setting-fontsize-val').textContent = fs.value; });
+}
+
+function toggleSidebar() {
+  const s = $('sidebar');
+  if (App.isMobile) s.classList.toggle('mobile-open');
+  else s.classList.toggle('collapsed');
+}
+
+function toggleWordWrap() {
+  App.settings.wordWrap = !App.settings.wordWrap;
+  if (App.monacoEditor) App.monacoEditor.updateOptions({ wordWrap: App.settings.wordWrap ? 'on' : 'off' });
+  saveSettings();
+  toast('Word wrap ' + (App.settings.wordWrap ? 'on' : 'off'), 'info', 1500);
+}
+
+function toggleMinimap() {
+  App.settings.showMinimap = !App.settings.showMinimap;
+  if (App.monacoEditor) App.monacoEditor.updateOptions({ minimap: { enabled: App.settings.showMinimap } });
+  saveSettings();
+  toast('Minimap ' + (App.settings.showMinimap ? 'on' : 'off'), 'info', 1500);
+}
+
+function toggleConsole() {
+  const cp = $('console-panel');
+  cp.classList.toggle('collapsed');
+  const btn = $('btn-toggle-console');
+  btn.querySelector('svg').style.transform = cp.classList.contains('collapsed') ? 'rotate(180deg)' : '';
+}
+
+function collapseAllFolders() {
+  qsa('.tree-folder-arrow').forEach(a => a.classList.remove('open'));
+  qsa('.tree-children').forEach(c => { c.style.maxHeight = '0'; c.classList.add('collapsed'); });
+}
+
+function openFullscreenPreview() {
+  const overlay = $('fullscreen-overlay');
+  overlay.classList.remove('hidden');
+  try {
+    const entry = findEntryFile();
+    if (!entry) return;
+    if (App.monacoReady && App.monacoEditor && App.activeTab) {
+      const m = App.monacoModels[App.activeTab];
+      if (m && App.files[App.activeTab]) App.files[App.activeTab].content = m.getValue();
+    }
+    buildBlobUrls();
+    const f = App.files[entry];
+    let html = rewriteAssetPaths(f.content || '', entry);
+    html = injectConsoleCaptureScript(html);
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    $('fullscreen-iframe').src = url;
+    setTimeout(() => URL.revokeObjectURL(url), 8000);
+  } catch(e) {}
+}
+
+function openPreviewInNewTab() {
+  try {
+    const entry = findEntryFile();
+    if (!entry) { toast('No HTML file found', 'error'); return; }
+    if (App.monacoReady && App.monacoEditor && App.activeTab) {
+      const m = App.monacoModels[App.activeTab];
+      if (m && App.files[App.activeTab]) App.files[App.activeTab].content = m.getValue();
+    }
+    buildBlobUrls();
+    const f = App.files[entry];
+    let html = rewriteAssetPaths(f.content || '', entry);
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 15000);
+  } catch(e) {
+    toast('Could not open preview', 'error');
+  }
+}
+
+/* ============================================================
+   MODALS
+============================================================ */
+function getFolderOptions() {
+  return ['(root)', ...Object.keys(App.files).filter(p => App.files[p].isFolder).sort()];
+}
+
+function openNewFileModal(parentFolder='') {
+  const modal = $('modal-new-file');
+  modal.classList.remove('hidden');
+  const select = $('select-new-file-folder');
+  select.innerHTML = '';
+  getFolderOptions().forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f === '(root)' ? '' : f;
+    opt.textContent = f;
+    if (f === parentFolder || (f === '(root)' && !parentFolder)) opt.selected = true;
+    select.appendChild(opt);
+  });
+  $('input-new-filename').value = '';
+  setTimeout(() => $('input-new-filename').focus(), 100);
+}
+
+function openNewFolderModal() {
+  const modal = $('modal-new-folder');
+  modal.classList.remove('hidden');
+  const select = $('select-new-folder-parent');
+  select.innerHTML = '';
+  getFolderOptions().forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f === '(root)' ? '' : f;
+    opt.textContent = f;
+    select.appendChild(opt);
+  });
+  $('input-new-foldername').value = '';
+  setTimeout(() => $('input-new-foldername').focus(), 100);
+}
+
+const defaultContents = {
+  html: `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>Document</title>\n  <link rel="stylesheet" href="style.css">\n</head>\n<body>\n  <h1>Hello World</h1>\n  <script src="script.js"><\/script>\n</body>\n</html>`,
+  css: `/* Styles */\n* {\n  box-sizing: border-box;\n  margin: 0;\n  padding: 0;\n}\n\nbody {\n  font-family: sans-serif;\n}\n`,
+  js: `// JavaScript\nconsole.log('Hello World!');\n`,
+  json: `{\n  "name": "project",\n  "version": "1.0.0"\n}\n`,
+  txt: ``,
+};
+
+function createNewFile() {
+  const name = $('input-new-filename').value.trim();
+  if (!name) { toast('Enter a file name', 'error'); return; }
+  const folder = $('select-new-file-folder').value;
+  const path = normPath(folder ? `${folder}/${name}` : name);
+  if (App.files[path]) { toast('File already exists', 'error'); return; }
+  const ext = (name.split('.').pop()||'').toLowerCase();
+  const content = defaultContents[ext] || '';
+  addFile(path, name, content, 'text');
+  $('modal-new-file').classList.add('hidden');
+  renderFileTree();
+  openFile(path);
+  saveSession();
+  toast(`Created ${name}`, 'success', 2000);
+}
+
+function createNewFolder() {
+  const name = $('input-new-foldername').value.trim();
+  if (!name) { toast('Enter a folder name', 'error'); return; }
+  const parent = $('select-new-folder-parent').value;
+  const path = normPath(parent ? `${parent}/${name}` : name);
+  if (App.files[path]) { toast('Already exists', 'error'); return; }
+  addFolder(path);
+  $('modal-new-folder').classList.add('hidden');
+  renderFileTree();
+  saveSession();
+  toast(`Created folder ${name}`, 'success', 2000);
+}
+
+function openRenameModal(path) {
+  App.renameTarget = path;
+  $('input-rename').value = getBasename(path);
+  $('modal-rename').classList.remove('hidden');
+  setTimeout(() => { $('input-rename').focus(); $('input-rename').select(); }, 100);
+}
+
+function confirmRename() {
+  const newName = $('input-rename').value.trim();
+  if (!newName || !App.renameTarget) return;
+  renameFile(App.renameTarget, newName);
+  App.renameTarget = null;
+  $('modal-rename').classList.add('hidden');
+  toast('Renamed successfully', 'success', 2000);
+}
+
+/* ============================================================
+   SETTINGS MODAL
+============================================================ */
+function openSettings() {
+  const s = App.settings;
+  $('setting-fontsize').value = s.fontSize;
+  $('setting-fontsize-val').textContent = s.fontSize;
+  $('setting-tabsize').value = s.tabSize;
+  $('setting-wordwrap').checked = s.wordWrap;
+  $('setting-autorefresh').checked = s.autoRefresh;
+  $('setting-autosave').checked = s.autoSave;
+  $('setting-toolbar').checked = s.showToolbar !== false;
+  $('setting-statusbar').checked = s.showStatusBar !== false;
+  $('setting-minimap').checked = !!s.showMinimap;
+  $('setting-bracket-color').checked = s.bracketColor !== false;
+  $('setting-project-name').value = s.projectName;
+  $('modal-settings').classList.remove('hidden');
+}
+
+function applyAndSaveSettings() {
+  App.settings.fontSize = parseInt($('setting-fontsize').value);
+  App.settings.tabSize = parseInt($('setting-tabsize').value);
+  App.settings.wordWrap = $('setting-wordwrap').checked;
+  App.settings.autoRefresh = $('setting-autorefresh').checked;
+  App.settings.autoSave = $('setting-autosave').checked;
+  App.settings.showToolbar = $('setting-toolbar').checked;
+  App.settings.showStatusBar = $('setting-statusbar').checked;
+  App.settings.showMinimap = $('setting-minimap').checked;
+  App.settings.bracketColor = $('setting-bracket-color').checked;
+  App.settings.projectName = $('setting-project-name').value.trim() || 'untitled-project';
+  applySettings();
+  saveSettings();
+  $('modal-settings').classList.add('hidden');
+  toast('Settings saved', 'success', 2000);
+}
+
+/* ============================================================
+   CONTEXT MENU
+============================================================ */
+function setupContextMenu() {
+  const menu = $('context-menu');
+  document.addEventListener('click', () => menu.classList.add('hidden'));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { menu.classList.add('hidden'); qsa('.modal-overlay').forEach(m => m.classList.add('hidden')); } });
+
+  qsa('.ctx-item').forEach(item => {
+    item.addEventListener('click', () => {
+      if (!App.ctxTarget) return;
+      const action = item.dataset.action;
+      const path = App.ctxTarget;
+      menu.classList.add('hidden');
+      if (action === 'open') openFile(path);
+      else if (action === 'rename') openRenameModal(path);
+      else if (action === 'duplicate') duplicateFile(path);
+      else if (action === 'favorite') toggleFavorite(path);
+      else if (action === 'delete') {
+        if (confirm(`Delete "${getBasename(path)}"?`)) { deleteFile(path); toast('Deleted', 'info', 1500); }
+      }
+    });
+  });
+}
+
+function showContextMenu(x, y, path) {
+  App.ctxTarget = path;
+  const menu = $('context-menu');
+  menu.classList.remove('hidden');
+  const isFolder = App.files[path]?.isFolder;
+  menu.querySelector('[data-action="open"]').style.display = isFolder ? 'none' : 'flex';
+  menu.querySelector('[data-action="duplicate"]').style.display = isFolder ? 'none' : 'flex';
+  menu.querySelector('[data-action="favorite"]').style.display = isFolder ? 'none' : 'flex';
+  const favBtn = menu.querySelector('[data-action="favorite"]');
+  if (favBtn) favBtn.querySelector('svg').style.fill = App.favorites.has(path) ? 'currentColor' : 'none';
+
+  const mw = 170, mh = 200;
+  menu.style.left = Math.min(x, window.innerWidth - mw - 4) + 'px';
+  menu.style.top = Math.min(y, window.innerHeight - mh - 4) + 'px';
+}
+
+/* ============================================================
+   DEVICE EMULATOR
+============================================================ */
+function setupDeviceSwitcher() {
+  qsa('.device-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      qsa('.device-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      applyDevice(btn.dataset.device);
+    });
+  });
+  applyDevice('desktop');
+}
+
+function applyDevice(device) {
+  App.currentDevice = device;
+  const frame = $('device-frame');
+  frame.className = 'device-' + device;
+  const vp = $('preview-viewport');
+  vp.style.background = device === 'desktop' ? 'transparent' : '#444';
+}
+
+/* ============================================================
+   RESIZER
+============================================================ */
+function setupResizer() {
+  const resizer = $('resizer');
+  const editorPanel = $('editor-panel');
+  const previewPanel = $('preview-panel');
+  let startX, startEditorW;
+
+  resizer.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    App.isResizing = true;
+    startX = e.clientX;
+    startEditorW = editorPanel.getBoundingClientRect().width;
+    document.body.classList.add('resizing');
+    resizer.classList.add('dragging');
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  });
+
+  function onMouseMove(e) {
+    if (!App.isResizing) return;
+    requestAnimationFrame(() => {
+      const diff = e.clientX - startX;
+      const totalW = $('editor-area').getBoundingClientRect().width - resizer.offsetWidth;
+      const newEditorW = Math.max(200, Math.min(totalW - 200, startEditorW + diff));
+      editorPanel.style.flex = 'none';
+      editorPanel.style.width = newEditorW + 'px';
+      previewPanel.style.flex = 'none';
+      previewPanel.style.width = (totalW - newEditorW) + 'px';
+    });
+  }
+
+  function onMouseUp() {
+    App.isResizing = false;
+    document.body.classList.remove('resizing');
+    resizer.classList.remove('dragging');
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+    if (App.monacoEditor) App.monacoEditor.layout();
+  }
+
+  resizer.addEventListener('touchstart', (e) => {
+    startX = e.touches[0].clientX;
+    startEditorW = editorPanel.getBoundingClientRect().width;
+    resizer.classList.add('dragging');
+  }, { passive: true });
+  resizer.addEventListener('touchmove', (e) => {
+    requestAnimationFrame(() => {
+      const diff = e.touches[0].clientX - startX;
+      const totalW = $('editor-area').getBoundingClientRect().width - resizer.offsetWidth;
+      const newEditorW = Math.max(200, Math.min(totalW - 200, startEditorW + diff));
+      editorPanel.style.flex = 'none';
+      editorPanel.style.width = newEditorW + 'px';
+      previewPanel.style.flex = 'none';
+      previewPanel.style.width = (totalW - newEditorW) + 'px';
+    });
+  }, { passive: true });
+  resizer.addEventListener('touchend', () => {
+    resizer.classList.remove('dragging');
+    if (App.monacoEditor) App.monacoEditor.layout();
+  }, { passive: true });
+}
+
+/* ============================================================
+   MOBILE NAV
+============================================================ */
+function setupMobileNav() {
+  qsa('.mobile-nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => setWorkspaceView(btn.dataset.view));
+  });
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+}
+
+function checkMobile() {
+  App.isMobile = window.innerWidth < 700;
+  $('mobile-nav').style.display = App.isMobile ? 'flex' : 'none';
+}
+
+function setWorkspaceView(view) {
+  App.currentView = view;
+  const ws = $('workspace');
+  ws.className = '';
+  if (view === 'files') {
+    $('sidebar').classList.add('mobile-open');
+  } else {
+    $('sidebar').classList.remove('mobile-open');
+    ws.classList.add(`view-${view}`);
+  }
+  qsa('.mobile-nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+}
+
+/* ============================================================
+   SWIPE SUPPORT
+============================================================ */
+function setupSwipe() {
+  const workspace = $('workspace');
+  workspace.addEventListener('touchstart', (e) => {
+    App.touchStartX = e.touches[0].clientX;
+    App.touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+  workspace.addEventListener('touchend', (e) => {
+    if (!App.isMobile) return;
+    const dx = e.changedTouches[0].clientX - App.touchStartX;
+    const dy = e.changedTouches[0].clientY - App.touchStartY;
+    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return;
+    const views = ['editor', 'preview'];
+    const ci = views.indexOf(App.currentView);
+    if (dx < -50 && ci < views.length - 1) setWorkspaceView(views[ci + 1]);
+    else if (dx > 50 && ci > 0) setWorkspaceView(views[ci - 1]);
+  }, { passive: true });
+}
+
+/* ============================================================
+   KEYBOARD SHORTCUTS
+============================================================ */
+function setupKeyboardShortcuts() {
+  document.addEventListener('keydown', (e) => {
+    const ctrl = e.ctrlKey || e.metaKey;
+
+    if (e.key === 'Escape') {
+      $('context-menu').classList.add('hidden');
+      qsa('.modal-overlay').forEach(m => m.classList.add('hidden'));
+    }
+
+    if (!ctrl) return;
+
+    if (e.key === 's') { e.preventDefault(); saveCurrentFile(); }
+    else if (e.key === 'Enter') { e.preventDefault(); clearConsole(); runPreview(); }
+    else if (e.key === 'n') { e.preventDefault(); openNewFileModal(); }
+    else if (e.key === 'b') { e.preventDefault(); toggleSidebar(); }
+    else if (e.key === 'j') { e.preventDefault(); toggleConsole(); }
+    else if (e.key === 'e') { e.preventDefault(); exportZip(); }
+    else if (e.key === 'Tab') { e.preventDefault(); cycleTab(e.shiftKey ? -1 : 1); }
+    else if (e.key === 'w') { e.preventDefault(); if (App.activeTab) closeTab(App.activeTab); }
+    else if (e.key === '\\') { e.preventDefault(); toggleSidebar(); }
+  });
+}
+
+function saveCurrentFile() {
+  if (!App.activeTab) return;
+  const f = App.files[App.activeTab];
+  if (!f) return;
+  if (App.monacoReady && App.monacoEditor) {
+    const m = App.monacoModels[App.activeTab];
+    if (m) f.content = m.getValue();
+  }
+  markTabModified(App.activeTab, false);
+  saveSession();
+  toast('Saved', 'success', 1500);
+  if (App.settings.autoRefresh) schedulePreview();
+}
+
+function cycleTab(dir) {
+  if (!App.openTabs.length) return;
+  const ci = App.openTabs.indexOf(App.activeTab);
+  const ni = (ci + dir + App.openTabs.length) % App.openTabs.length;
+  activateTab(App.openTabs[ni]);
+}
+
+/* ============================================================
+   ORIENTATION / RESIZE
+============================================================ */
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => {
+    checkMobile();
+    if (App.monacoEditor) App.monacoEditor.layout();
+  }, 300);
+});
+
+window.addEventListener('resize', () => {
+  if (App.monacoEditor) App.monacoEditor.layout();
+  checkMobile();
+});
+
+/* ============================================================
+   STARTER TEMPLATE
+============================================================ */
+function initStarterTemplate() {
+  if (Object.keys(App.files).length > 0) return;
+
+  const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Project</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Hello, World!</h1>
+    <p>Welcome to <strong>HTML Tester Pro</strong>. Edit these files to get started.</p>
+    <button id="clickMe">Click me!</button>
+    <div id="output"></div>
+  </div>
+  <script src="script.js"><\/script>
 </body>
-                                                                                                                                                              </html>
+</html>`;
+
+  const cssContent = `* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, #0a0c10 0%, #12182a 50%, #0a1530 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.container {
+  text-align: center;
+  padding: 40px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(10px);
+  max-width: 500px;
+  width: 90%;
+}
+
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 16px;
+  background: linear-gradient(90deg, #4f8eff, #9d7aff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+p {
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+button {
+  padding: 12px 28px;
+  background: linear-gradient(135deg, #4f8eff, #9d7aff);
+  border: none;
+  border-radius: 30px;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(79,142,255,0.4);
+}
+
+#output {
+  margin-top: 20px;
+  color: #3ecf70;
+  font-size: 18px;
+  font-weight: 600;
+  min-height: 28px;
+}`;
+
+  const jsContent = `// JavaScript is working!
+let count = 0;
+
+document.getElementById('clickMe').addEventListener('click', function() {
+  count++;
+  const output = document.getElementById('output');
+  output.textContent = '🎉 Clicked ' + count + ' time' + (count !== 1 ? 's' : '') + '!';
+  console.log('Button clicked! Count:', count);
+});
+
+console.log('Script loaded successfully!');`;
+
+  addFile('index.html', 'index.html', htmlContent, 'text');
+  addFile('style.css', 'style.css', cssContent, 'text');
+  addFile('script.js', 'script.js', jsContent, 'text');
+  renderFileTree();
+  openFile('index.html');
+  runPreview();
+  saveSession();
+}
+
+window.addEventListener('load', () => { setTimeout(initStarterTemplate, 1500); });
+</script>
+</body>
+</html>
+ENDOFFILE_MARKER
+
+echo "File written, checking size..."
+wc -c /mnt/user-data/outputs/index.html
+echo "Lines:"
+wc -l /mnt/user-data/outputs/index.html
